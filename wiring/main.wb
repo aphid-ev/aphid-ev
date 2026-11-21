@@ -1,0 +1,89 @@
+// Aphid EV conversion — top-level vehicle wiring
+//
+// The Vehicle component is authored as fragments, one file per system:
+// each `systems/*.wb` extends Vehicle with the instances and wires of
+// one logical system (traction, safety, 12V, CAN), and each `looms/*.wb`
+// carries a physical harness bundle and its harness views. Every
+// fragment merges into the flat namespace rooted here, so wires and
+// views freely reference instances declared in other fragments. This
+// file keeps only the root component and the whole-vehicle overview.
+
+use Vehicle from "systems/traction.wb";
+use Vehicle from "systems/safety.wb";
+use Vehicle from "systems/lv.wb";
+use Vehicle from "systems/can.wb";
+use Vehicle from "systems/cooling.wb";
+use Vehicle from "systems/lighting.wb";
+use Vehicle from "looms/tunnel.wb";
+use Vehicle from "looms/engine_bay.wb";
+use Vehicle from "looms/ac_charge.wb";
+use Vehicle from "looms/pedal_branch.wb";
+use Vehicle from "looms/brake_branch.wb";
+use Vehicle from "looms/key_branch.wb";
+use Vehicle from "looms/gear_branch.wb";
+use Vcm     from "components/lv/vcm.wb";
+
+component Vehicle {
+    // The VCM is the one device every system touches; it lives at the root.
+    vcm: Vcm "VCM";
+}
+
+// --- View: HV System Overview ---
+
+view schematic "HV System Overview" {
+    grid: 20;
+
+    // The fuse box appears only as its interlock feed: a single port wired
+    // into the e-stop, which is the head of the HV interlock loop.
+    include fuses at (4, 26) ports {
+        east: interlock;
+    }
+
+    include msd at (10, 10) ports {
+        east:  hv_in;
+        west:  hv_out;
+        south: interlock_in, interlock_out;
+    }
+
+    include front at (25, 10) ports {
+        west: hv_neg;
+        east: hv_pos;
+        south: interlock_in, safe_pwr, interlock_out;
+    }
+
+    include rear at (40, 10) ports {
+        west: hv_neg;
+        east: hv_pos;
+        south: interlock_in, safe_pwr, interlock_out;
+    }
+
+    include hvjb at (55, 11) ports {
+        west:  pack_pos_in, pack_neg_in;
+        east:  inv_pos, inv_neg, obc_pos, obc_neg;
+        south: interlock_in, interlock_out;
+    }
+
+    include inv at (80, 9) ports {
+        west:  dc_pos, dc_neg;
+        east:  phase_u, phase_v, phase_w;
+        south: interlock_in, interlock_out;
+    }
+
+    include charger at (75, 25) ports {
+        west:  dc_pos, dc_neg;
+        south: interlock_out, interlock_in;
+    }
+
+    include mot at (95, 9) ports {
+        west: phase_u, phase_v, phase_w;
+    }
+
+    include e_stop at (20, 25) ports {
+        west: interlock_out, interlock_in;
+    }
+
+    include vcm at (55, 30) ports {
+        west:  safe_pwr;
+        east: interlock;
+    }
+}
