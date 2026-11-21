@@ -5,9 +5,17 @@ tags: [electronics]
 created: 2024-08-05
 ---
 
-The low voltage electrical system is powered by a small 12 V lead-acid
-battery, similar to what you would find in a motorcycle. It is charged
-directly by the [[pdm#dcdc|PDM DC/DC]].
+Most of the Beetle's original 12 V system remains in place and is
+integrated with the new EV systems.
+
+# Auxiliary battery
+
+The car retains a conventional 12 V battery, but it can be substantially
+smaller than the Beetle's original battery because it does not crank an
+engine. The [[obc#dcdc|Mitsubishi DC-DC converter]] maintains this battery
+and supplies the 12 V system whenever the HV system is active. The battery
+remains the stable source for always-on loads and for bringing the EV
+system online.
 
 # Electrical diagram
 
@@ -15,7 +23,7 @@ directly by the [[pdm#dcdc|PDM DC/DC]].
 
 # DC/DC
 
-Ground strap to PDM.
+Ground strap to the Mitsubishi OBC/DC-DC.
 
 # Consumers
 
@@ -35,13 +43,40 @@ fuses and relays will be based on this list.
 All relays are controlled by an open-drain output of the
 [[vcm#io|VCM]].
 
-# Main power distribution
+# Primary distribution {#primary-distribution}
 
-*TBD.*
+A [Littelfuse XT 880073](https://www.littelfuse.com/products/power-distribution/fuse-only/xt/880073)
+is the primary battery-fed distribution box. Its M8 input connects to the
+12 V battery. The three MIDI-fused M8 outputs are assigned to:
 
-# Rear power distribution
+1. The Mitsubishi DC-DC converter connection.
+2. The rear EV fuse and relay box.
+3. The Beetle's original 12 V electrical system.
 
-*TBD.*
+The XT also provides four low-current automotive fuse positions through a
+four-pin Aptiv APEX connector. Their provisional assignments are:
+
+1. Ignition key feed; the key outputs connect directly to VCM inputs.
+2. Always-on supply for the front BMS.
+3. Always-on supply for the rear BMS.
+4. The [[safety#interlock|HV interlock loop]], including the emergency
+   switch and terminating at the VCM.
+
+These four assignments remain subject to final load, fuse-rating, and
+connector-pin decisions.
+
+# Rear EV distribution {#rear-distribution}
+
+A [Littelfuse HWB18 PDM31003ZXM](https://www.littelfuse.com/products/power-distribution/hard-wired-pdms/hwb18/pdm31003zxm)
+in the rear engine compartment distributes the MIDI-fused EV feed.
+Individually fused always-on outputs supply the VCM and the wake or standby
+feeds for the inverter and OBC/DC-DC.
+
+An EV-system relay supplies loads that should be off while the car is idle,
+including the inverter and OBC/DC-DC inputs that must remain powered while
+their CAN communication is active. A separate relay supplies the electric
+cooling fan. The remaining fuse and relay allocation will be defined as the
+rear electrical loads are finalized.
 
 # Front power distribution
 

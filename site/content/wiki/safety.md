@@ -21,21 +21,50 @@ The general idea is to have a dual-channel system for all safety functions
 such that **a single error will never cause a dangerous situation** and
 **a single error is always detected**.
 
-The interlock circuit controls the positive supply of the high voltage
-contactors (including precharge) in the battery. It runs through the
-interlock switches in the [[inverter#interlock|traction inverter]]
-and the [[pdm|PDM]], through the emergency stop button. The
-interlock is powered by the [[Monitor firmware|VCM monitor application]],
-which can also stop the supply if the VCM main application is misbehaving.
-
 *TBD: Safety architecture drawing.*
+
+# Electrical safety
+
+The traction HV system is isolated from the vehicle chassis and operates as
+a floating system. No active on-board isolation monitor is currently
+planned. Insulation resistance will be checked with a suitable insulation
+tester during construction, commissioning, and service.
+
+## HV interlock loop {#interlock}
+
+A high-voltage interlock loop passes through the HV components and
+enclosures, except the [[obc|Mitsubishi OBC/DC-DC]], and includes a
+driver-accessible emergency switch. A valid loop permits the secondary
+processor in the VCM to enable a high-side driver that supplies the
+battery contactor coils. The BMS controllers independently complete the
+coils' low-side paths, so contactors require authorization from both the
+VCM safety path and the relevant BMS.
+
+The loop is fed from a low-current fuse in the primary distribution box
+and terminates at the VCM; see [[LV system#primary-distribution]].
+
+# Functional safety
+
+The VCM's secondary processor independently monitors the accelerator
+channels, brake inputs, and torque requests sent by the primary processor.
+Those checks and the internal processor architecture belong to the VCM
+design rather than the vehicle harness. At the external electrical
+interface, the secondary processor controls the high-side driver supplying
+the battery contactors and removes contactor power as a last resort if the
+main processor stops responding on their internal communication bus or
+another shutdown condition is detected.
+
+The [[vcm]] and [[Monitor firmware]] pages describe the VCM side. The
+vehicle-level fault behaviour is described under
+[[vcm#operating-states|operating states]].
 
 # Unintended acceleration or braking
 
 There is a lot of monitoring around making sure the car does not get any
-unintended acceleration or braking. As a last resort, the emergency stop
-button is connected in line with the interlock circuit and breaks the
-positive supply to the main contactors if pushed.
+unintended acceleration or braking. As a last resort, the driver-accessible
+emergency switch is part of the [[#interlock|HV interlock loop]]. Pushing
+it breaks the loop, and the VCM secondary processor removes the high-side
+supply to the contactor coils.
 
 ## Definitions
 
@@ -118,6 +147,7 @@ supervision regardless.
 
 This error case is mainly relevant when servicing the drivetrain
 components. To prevent access to high voltage busbars and similar while
-they are powered, the built-in interlock circuits of the
-[[pdm|PDM]] and the [[inverter#interlock|inverter]]
-are used and connected in series with the main interlock circuit.
+they are powered, the built-in interlock circuit of the
+[[inverter#interlock|inverter]] is connected in series with the
+[[#interlock|HV interlock loop]]. The Mitsubishi OBC/DC-DC has no
+interlock functionality and is not part of the loop.

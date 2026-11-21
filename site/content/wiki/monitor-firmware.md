@@ -22,11 +22,12 @@ The application monitors a few different things:
 - Motor rotational speed reported by the inverter.
 
 Its only task is to control the high side output of the VCM and disable
-it in case of any faults. This output feeds the high voltage contactors
-through a series of interlock circuits and the emergency stop button,
-while the main application controls the low side (open-drain) outputs to
-the same contactors. This gives the main application full control of the
-contactors *as long as* the monitor has not detected any faults.
+it in case of any faults. This output supplies the coils of the high
+voltage contactors. The monitor enables it only while the
+[[safety#interlock|HV interlock loop]], which includes the emergency
+switch, is valid. The [[bms|BMS]] controllers switch the low side of the
+same coils. A contactor closes only when both the monitor and the BMS
+allow it, as described under [[contactors#coil-control]].
 
 The firmware is written in Rust and can be found in the vehicle
 controller monorepo at

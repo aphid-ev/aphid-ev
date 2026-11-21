@@ -7,11 +7,15 @@ created: 2024-06-26
 
 The Nissan Leaf coolant pump, which appears to be the same unit used in
 several Tesla EVs, circulates coolant through the cooling loop for the
-[[motor#cooling|motor]],
-[[inverter#cooling|inverter]] and
-[[pdm#cooling|PDM]] and the radiator. Compared to an ICE
+[[motor#cooling|motor]] and
+[[inverter#cooling|inverter]] and the radiator. Compared to an ICE
 waterpump that is often belt-driven from the crankshaft, this one is
 electrically driven and controlled.
+
+The electric coolant pump is powered from the switched EV supply, receives
+a PWM speed command from the VCM, and returns a tacho signal for
+monitoring. The VCM controls a separate HWB18 relay for the radiator fan;
+see [[LV system#rear-distribution]].
 
 # Connector
 

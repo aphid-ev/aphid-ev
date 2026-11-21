@@ -5,6 +5,12 @@ tags: [canbus, leaf, pdm, electrical, software]
 created: 2024-05-19
 ---
 
+> [!WARNING]
+> The Aphid no longer uses the Leaf PDM. It does not fit the available
+> space, so charging and 12 V conversion moved to the
+> [[obc|Mitsubishi Outlander OBC/DC-DC]]. This page is kept as reference
+> for the Leaf unit.
+
 The PDM is the topmost unit on the Nissan Leaf drive stack. It manages
 power delivery for all high voltage components, contains the on-board
 charger and the 12 V DC/DC converter that keeps the 12 V battery charged.
@@ -71,12 +77,11 @@ connector.
 
 The PDM contains an interlock circuit that breaks a connection when the
 top lid or the lid covering the inverter busbar screws is opened. The
-interlock pins are *TBD* on the signal connector. See the
-[[safety]] page for how this fits into the overall system.
+interlock pins are *TBD* on the signal connector.
 
 # CAN interface
 
-The PDM is connected on the [[EV-CAN]] network.
+In the Leaf, the PDM is connected on the [[EV-CAN]] network.
 
 # Cooling
 
@@ -87,7 +92,7 @@ The PDM needs coolant flowing through the cooling circuit, driven by the
 
 The PDM contains a DC/DC converter that charges the 12 V battery from the
 high voltage battery in a similar fashion to the alternator of a car with
-a combustion engine. It feeds the [[LV system]].
+a combustion engine.
 
 # References
 

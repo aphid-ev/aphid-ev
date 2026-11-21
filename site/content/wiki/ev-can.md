@@ -6,8 +6,26 @@ created: 2024-05-19
 ---
 
 The EV-CAN network is the main CAN bus used by the donor Nissan Leaf
-components — the [[pdm|PDM]], [[inverter|traction
-inverter]] and BMS — and is the bus the [[vcm|DIY VCM]] talks to.
+components. In the Aphid it is CAN1, the OEM powertrain bus that the
+[[vcm|DIY VCM]] uses to talk to the [[inverter|traction inverter]] and the
+[[obc|Mitsubishi OBC/DC-DC]]. The DIY ECUs use a second bus, CAN2.
+
+# Vehicle buses {#vehicle-buses}
+
+The VCM provides two independent CAN interfaces:
+
+- **CAN1 - OEM powertrain:** connects the VCM, Nissan Leaf inverter, and
+  Mitsubishi OBC/DC-DC. The secondary safety processor monitors this bus,
+  including outgoing torque requests.
+- **CAN2 - DIY vehicle systems:** connects the VCM to the front and rear
+  [[bms|BMS]] controllers. Future DIY nodes, such as a driver display, may
+  also use this bus.
+
+Both buses use twisted pairs. CAN1 runs VCM to OBC/DC-DC to inverter and is
+terminated with 120 ohm resistors at the VCM and inverter; the OBC/DC-DC is
+an unterminated intermediate node. CAN2 runs front BMS to rear BMS to VCM
+and is terminated at the front BMS and VCM. Bus bit rates remain to be
+documented.
 
 # Electrical
 
@@ -16,20 +34,14 @@ signalling to improve noise immunity.
 
 ## Signalling
 
-EV-CAN uses ISO 11898-1 with 11-bit identifiers and a 500 kbit/s baud rate.
+In the Leaf, EV-CAN uses ISO 11898-1 with 11-bit identifiers and a 500 kbit/s baud rate.
 
 ## Topology
 
 A well-functioning CAN bus should have a linear topology with short stubs
-sticking out and a 120 Ω termination at each end. In the Nissan Leaf the
-following ECUs are connected on the EV-CAN:
-
-| ECU | Termination |
-| --- | --- |
-| VCM | *TBD* |
-| Traction inverter | *TBD* |
-| BMS | *TBD* |
-| *TBD* | *TBD* |
+sticking out and a 120 Ω termination at each end. The order and
+terminations of CAN1 and CAN2 in the Aphid are listed under
+[[#vehicle-buses]].
 
 # Data integrity
 
@@ -68,8 +80,7 @@ fn nissan_crc<const N: usize>(data: &[u8; N]) -> u8 {
 # Messages
 
 Here are the messages seen on the EV-CAN network. For more ECU-specific
-information see the [[pdm|PDM]] and [[inverter|
-traction inverter]] pages.
+information see the [[inverter|traction inverter]] page.
 
 ## `0x1D4` — Torque request
 
