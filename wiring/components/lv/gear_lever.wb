@@ -7,8 +7,8 @@
 
 component GearLever {
     connector x1 "Shifter 3p" {
-        pub port feed "FEED" pin 1;   // fused 12 V feed in
-        pub port r    "R"    pin 2;   // reverse request (momentary)
-        pub port d    "D"    pin 3;   // drive request (momentary)
+        pub port feed "FEED" pin 1; // fused 12 V feed in
+        pub port r    "R"    pin 2; // reverse request (momentary)
+        pub port d    "D"    pin 3; // drive request (momentary)
     }
 }

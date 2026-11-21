@@ -7,7 +7,7 @@
 
 # Tool versions CI installs. Bump here to adopt a newer release.
 aphid_version := 'v0.5.1'
-wirebug_version := 'v0.1.0'
+wirebug_version := 'v0.2.0'
 # The hoster release running on hoster.lhelge.se, for `hoster stack check`.
 hoster_version := 'v0.11.0'
 bin := env('HOME') / '.local/bin'

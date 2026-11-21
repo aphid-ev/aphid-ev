@@ -19,7 +19,7 @@ component HvJunctionBox {
     }
 
     connector intlk "Interlock 2p" {
-        pub port interlock_in  "INTLK IN" pin 1;
+        pub port interlock_in  "INTLK IN"  pin 1;
         pub port interlock_out "INTLK OUT" pin 2;
     }
 

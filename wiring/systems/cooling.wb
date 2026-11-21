@@ -17,7 +17,7 @@ extend Vehicle {
     // Pump — EV-12V supply plus the VCM's PWM command and tacho return.
     wire red   1.5 "EV 12V"    [fuses.ev_12v, pump.v12];
     wire blue  0.5 "PUMP PWM"  [vcm.pump_pwm, pump.pwm];
-    wire green 0.5 "PUMP TACH" [pump.tach, vcm.pump_tach];
+    wire green 0.5 "PUMP TACH" [pump.tach,    vcm.pump_tach];
 
     // Fan — switched 12 V from its fuse-box relay.
     wire red 2.5 "FAN 12V" [fuses.fan_12v, fan.v12];

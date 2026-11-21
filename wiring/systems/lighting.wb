@@ -28,7 +28,7 @@ view schematic "Brake lights" {
         east: brake;
     }
 
-    include bl_left  at (26, 3)  ports { west: stop; }
-    include bl_right at (26, 8)  ports { west: stop; }
+    include bl_left  at (26, 3) ports { west: stop; }
+    include bl_right at (26, 8) ports { west: stop; }
     include bl_chmsl at (26, 13) ports { west: stop; }
 }

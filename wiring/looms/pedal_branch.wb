@@ -8,8 +8,8 @@
 // that is actually built onto that bundle.
 
 use AcceleratorPedal from "../components/lv/pedal.wb";
-use Dt04_4p from "../components/connectors.wb";
-use Dt06_4s from "../components/connectors.wb";
+use Dt04_4p          from "../components/connectors.wb";
+use Dt06_4s          from "../components/connectors.wb";
 
 extend Vehicle {
     pedal: AcceleratorPedal "Accelerator pedal";
@@ -29,9 +29,9 @@ extend Vehicle {
         type:   "4-core";
         length: 1.2;
 
-        wire green  0.5 "APPS1" [vcm.accel_1, ic_pedal.apps1];
-        wire yellow 0.5 "APPS2" [vcm.accel_2, ic_pedal.apps2];
-        wire red    0.5 "5V"    [vcm.accel_5v, ic_pedal.sens_5v];
+        wire green  0.5 "APPS1" [vcm.accel_1,   ic_pedal.apps1];
+        wire yellow 0.5 "APPS2" [vcm.accel_2,   ic_pedal.apps2];
+        wire red    0.5 "5V"    [vcm.accel_5v,  ic_pedal.sens_5v];
         wire black  0.5 "GND"   [vcm.accel_gnd, ic_pedal.gnd];
     }
 
@@ -39,10 +39,10 @@ extend Vehicle {
         type:   "4-core";
         length: 0.35;
 
-        wire green  0.5 "APPS1" [ic_pedal.apps1, pedal.apps1];
-        wire yellow 0.5 "APPS2" [ic_pedal.apps2, pedal.apps2];
+        wire green  0.5 "APPS1" [ic_pedal.apps1,   pedal.apps1];
+        wire yellow 0.5 "APPS2" [ic_pedal.apps2,   pedal.apps2];
         wire red    0.5 "5V"    [ic_pedal.sens_5v, pedal.sens_5v];
-        wire black  0.5 "GND"   [ic_pedal.gnd, pedal.gnd];
+        wire black  0.5 "GND"   [ic_pedal.gnd,     pedal.gnd];
     }
 }
 

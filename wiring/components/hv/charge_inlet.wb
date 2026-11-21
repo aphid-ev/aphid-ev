@@ -8,7 +8,7 @@ component ChargeInlet {
         pub port l  "L"  pin 1;
         pub port n  "N"  pin 2;
         pub port pe "PE" pin 3;
-        pub port cp "CP" pin 4;   // control pilot → OBC
-        pub port pp "PP" pin 5;   // proximity pilot → VCM
+        pub port cp "CP" pin 4; // control pilot → OBC
+        pub port pp "PP" pin 5; // proximity pilot → VCM
     }
 }

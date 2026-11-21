@@ -8,20 +8,20 @@
 // views freely reference instances declared in other fragments. This
 // file keeps only the root component and the whole-vehicle overview.
 
-use Vehicle from "systems/traction.wb";
-use Vehicle from "systems/safety.wb";
-use Vehicle from "systems/lv.wb";
-use Vehicle from "systems/can.wb";
-use Vehicle from "systems/cooling.wb";
-use Vehicle from "systems/lighting.wb";
-use Vehicle from "looms/tunnel.wb";
-use Vehicle from "looms/engine_bay.wb";
-use Vehicle from "looms/ac_charge.wb";
-use Vehicle from "looms/pedal_branch.wb";
-use Vehicle from "looms/brake_branch.wb";
-use Vehicle from "looms/key_branch.wb";
-use Vehicle from "looms/gear_branch.wb";
-use Vcm     from "components/lv/vcm.wb";
+fragment "systems/traction.wb";
+fragment "systems/safety.wb";
+fragment "systems/lv.wb";
+fragment "systems/can.wb";
+fragment "systems/cooling.wb";
+fragment "systems/lighting.wb";
+fragment "looms/tunnel.wb";
+fragment "looms/engine_bay.wb";
+fragment "looms/ac_charge.wb";
+fragment "looms/pedal_branch.wb";
+fragment "looms/brake_branch.wb";
+fragment "looms/key_branch.wb";
+fragment "looms/gear_branch.wb";
+use Vcm from "components/lv/vcm.wb";
 
 component Vehicle {
     // The VCM is the one device every system touches; it lives at the root.
@@ -46,14 +46,14 @@ view schematic "HV System Overview" {
     }
 
     include front at (25, 10) ports {
-        west: hv_neg;
-        east: hv_pos;
+        west:  hv_neg;
+        east:  hv_pos;
         south: interlock_in, safe_pwr, interlock_out;
     }
 
     include rear at (40, 10) ports {
-        west: hv_neg;
-        east: hv_pos;
+        west:  hv_neg;
+        east:  hv_pos;
         south: interlock_in, safe_pwr, interlock_out;
     }
 
@@ -82,7 +82,7 @@ view schematic "HV System Overview" {
     }
 
     include vcm at (55, 30) ports {
-        west:  safe_pwr;
+        west: safe_pwr;
         east: interlock;
     }
 }

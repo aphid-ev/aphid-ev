@@ -9,8 +9,8 @@ component ObcDcdc {
     }
 
     connector ac "AC inlet 3p" {
-        pub port ac_l  "AC L" pin 1;
-        pub port ac_n  "AC N" pin 2;
+        pub port ac_l  "AC L"  pin 1;
+        pub port ac_n  "AC N"  pin 2;
         pub port ac_pe "AC PE" pin 3;
     }
 
@@ -24,13 +24,12 @@ component ObcDcdc {
     // control pilot. Pin numbers follow the Mitsubishi wiring diagram.
     // (openinverter.org/wiki/Mitsubishi_Outlander_DCDC_OBC)
     connector sig "Signal 13p" {
-        pub port dc_sw "DC SW" pin 4;    // DC/DC enable — from the VCM
+        pub port dc_sw "DC SW" pin 4; // DC/DC enable — from the VCM
         pub port can_h "CAN H" pin 6;
-        pub port sense "SENSE" pin 7;    // permanent +12V sense
-        pub port igct  "IGCT"  pin 8;    // switched +12V main supply (HV-active)
-        pub port cp    "CP"    pin 9;    // control pilot from the charge port
+        pub port sense "SENSE" pin 7; // permanent +12V sense
+        pub port igct  "IGCT"  pin 8; // switched +12V main supply (HV-active)
+        pub port cp    "CP"    pin 9; // control pilot from the charge port
         pub port gnd   "GND"   pin 10;
         pub port can_l "CAN L" pin 13;
     }
-
 }

@@ -15,7 +15,7 @@ component BmsMaster {
     }
 
     connector power "Power 4p" {
-        pub port b_pos "B+" pin 1;
+        pub port b_pos "B+"  pin 1;
         pub port gnd   "GND" pins [2, 3, 4];
     }
 

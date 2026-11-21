@@ -2,18 +2,27 @@
 
 generated := source_directory() / '../site/static/generated/wiring'
 
-# Parse and validate the project, treating warnings as errors
+# Validate the project with warnings as errors, and check its formatting
 check:
-    wirebug check . --strict
+    wirebug check --strict
+    wirebug fmt --check
 
-# Render embeddable SVGs for the site
+# Format the .wb files in place
+fmt:
+    wirebug fmt
+
+# Render embeddable SVGs, manifest.json and build tables for the site
 render:
-    wirebug render . --out {{ generated }} --embed --strict
+    wirebug render --out {{ generated }} --embed --strict
 
-# Export every view into a single A4 PDF
+# Export every view into a single A4 PDF in wiring/out
 pdf:
-    wirebug render . --out out --pdf --strict
+    wirebug render --pdf --strict
 
 # Serve with live reload
 serve:
-    wirebug serve .
+    wirebug serve
+
+# Regenerate the wirebug-dsl agent skill for the installed wirebug
+skill:
+    wirebug skill --install claude

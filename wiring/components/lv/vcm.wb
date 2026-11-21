@@ -4,7 +4,6 @@
 // Interlock terminates here — VCM uses it internally to gate
 // the high-side switch that sources safe power.
 
-
 component Vcm {
     // CAN1 — powertrain link, straight to the inverter.
     connector can1 "CAN 4p" {
@@ -20,15 +19,15 @@ component Vcm {
     }
 
     connector lv "12V 2p" {
-        pub port b_pos "B+" pin 1;
+        pub port b_pos "B+"  pin 1;
         pub port gnd   "GND" pin 2;
     }
 
     connector accel "Accelerator 4p" {
-        pub port accel_1   "ACCEL 1" pin 1;
-        pub port accel_2   "ACCEL 2" pin 2;
+        pub port accel_1   "ACCEL 1"   pin 1;
+        pub port accel_2   "ACCEL 2"   pin 2;
         pub port accel_gnd "ACCEL GND" pin 3;
-        pub port accel_5v  "ACCEL 5V" pin 4;
+        pub port accel_5v  "ACCEL 5V"  pin 4;
     }
 
     connector brake "Brake 2p" {

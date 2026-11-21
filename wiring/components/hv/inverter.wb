@@ -25,12 +25,12 @@ component Inverter {
         pub port can_l "CAN L" pin 15;
 
         // Motor connections — resolver + temperature, motor-side nomenclature
-        pub port res_sin_neg "SIN-" pin 17;
-        pub port res_cos_neg "COS-" pin 18;
-        pub port res_ex_pos  "EX+" pin 19;
-        pub port res_sin_pos "SIN+" pin 20;
-        pub port res_cos_pos "COS+" pin 21;
-        pub port res_ex_neg  "EX-" pin 27;
+        pub port res_sin_neg    "SIN-"  pin 17;
+        pub port res_cos_neg    "COS-"  pin 18;
+        pub port res_ex_pos     "EX+"   pin 19;
+        pub port res_sin_pos    "SIN+"  pin 20;
+        pub port res_cos_pos    "COS+"  pin 21;
+        pub port res_ex_neg     "EX-"   pin 27;
         pub port motor_temp_neg "TEMP-" pin 44;
         pub port motor_temp_pos "TEMP+" pin 45;
 
