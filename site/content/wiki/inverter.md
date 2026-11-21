@@ -6,8 +6,14 @@ created: 2024-05-19
 ---
 
 The traction inverter is the middle unit on the Nissan Leaf drive stack.
-It takes high voltage DC from the PDM and creates the three-phase drive
-current for the [[motor]].
+It takes high voltage DC from the HV junction box and creates the
+three-phase drive current for the [[motor]].
+
+The 80 kW inverter comes from another Nissan Leaf. It controls the motor
+and receives torque commands from the Vehicle Control Module (VCM) over
+CAN1. The inverter measures HV bus voltage and traction current and
+publishes both over CAN1. Its DC-link voltage measurement is used to
+determine when [[contactors#precharge|precharge]] is complete.
 
 This page collects information on the mechanical, electrical and software
 interfaces of the Gen 2 80 kW unit.
@@ -15,7 +21,8 @@ interfaces of the Gen 2 80 kW unit.
 # Electrical interface
 
 The inverter is driven by 12 V and draws around *TBD* A during full
-operation.
+operation. Its wake or standby feed is always on and its other 12 V inputs
+come from the EV-system relay; see [[LV system#rear-distribution]].
 
 The high voltage inputs contain a considerable amount of capacitance and
 should not be connected to the battery without pre-charging first.
@@ -77,7 +84,9 @@ that fits into the overall safety system.
 # CAN interface
 
 The inverter is on the EV-CAN network — a standard ISO 11898-1 CAN bus
-with 11-bit identifiers at 500 kbit/s.
+with 11-bit identifiers at 500 kbit/s. In the Aphid this is CAN1, where
+the inverter is the terminated end opposite the VCM; see
+[[EV-CAN#vehicle-buses]].
 
 To keep the inverter happy, three CAN frames need to be sent periodically:
 

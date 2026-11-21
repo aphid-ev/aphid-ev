@@ -8,28 +8,32 @@ created: 2024-07-01
 > [!NOTE]
 > This page is just a draft — more schematics and diagrams coming.
 
-The battery will be built from modules out of a donor EV, the type of
-which will be determined by availability. Hopefully we can come by a
-cost-effective 24 kWh Nissan Leaf battery.
+The battery is split between front and rear enclosures. Each enclosure
+contains six Renault Zoe 8s2p cell modules connected in series. The two
+48s2p sections are connected in series to form a 96s2p traction pack.
 
-Since the VW Beetle is quite small, the battery will need to be divided
-into two parts: a rear battery between the back seat and the rear
-firewall, and a front battery in the frunk where the gas tank normally
-sits. Depending on the modules, the batteries will be connected in series
-or parallel to reach a nominal voltage of `~350–400 V` and deliver
-`~200 A`.
+Since the VW Beetle is quite small, the battery is divided into two parts:
+a rear battery between the back seat and the rear firewall, and a front
+battery in the frunk where the gas tank normally sits.
 
-The pack ties into the rest of the high voltage system via the
-[[contactors]] and is supervised by the [[bms]].
+The pack ties into the rest of the [[HV system]] via the [[contactors]].
+Each section is supervised by its own [[bms|BMS]].
 
 # Front battery
 
-The front battery will contain the precharge circuit and the service
-disconnect.
+The front battery contains positive and negative main contactors, the
+manual service disconnect (MSD), and the precharge contactor and resistor.
+Mounting the MSD and precharge hardware with the front pack keeps the
+service-isolation point and precharge circuit in the same assembly.
+
+The MSD contains the traction pack's 250 A main fuse.
 
 # Rear battery
 
-*TBD.*
+The rear battery contains positive and negative main contactors but no MSD
+or precharge hardware. Its enclosure therefore contains only the six cell
+modules, BMS electronics, main contactors, and their associated
+connections.
 
 # Current shunt
 

@@ -104,6 +104,13 @@ distance between the mounting holes is **101.6 mm** (4″).
 
 # I/O
 
+> [!WARNING]
+> This pinout predates the current electrical architecture. The lower
+> contactor, upper contactor and precharge outputs are stale: the
+> [[bms|BMS]] controllers now switch the low side of the contactor coils,
+> and the VCM only supplies the high side. See
+> [[contactors#coil-control]].
+
 The connectors have the following pinout:
 
 ![VCM pinout](/static/images/vcm_pinout.png)
@@ -126,73 +133,5 @@ The connectors have the following pinout:
 
 # Functional states
 
-The VCM has the following functional states:
-
-```mermaid
-stateDiagram-v2
-    Sleep --> Precharge: Ignition on
-    Precharge --> Ready: Precharge done
-    Ready --> Drive: Crank
-    Drive --> Ready: Ignition off
-    Ready --> Sleep: 15 min
-    Ready --> Charging: Charger connected
-    Charging --> Ready: Charger disconnected
-    Drive --> Fault: Safety critical fault
-    Charging --> Fault: Safety critical fault
-```
-
-## Sleep
-
-The main DC/DC inside the VCM is switched off and all electronic circuitry
-is unpowered. The only way to wake the VCM from sleep is to supply 12 V
-to the ignition pin.
-
-| High side | disabled |
-| Precharge | disabled |
-| Main contactors | disabled |
-| Torque | not allowed |
-
-## Precharge
-
-The precharge contactor is activated to slowly (within seconds) charge the
-inverter capacitor bank through a power resistor. Once the inverter
-capacitor voltage has reached **90 %** of the full battery voltage, the
-VCM moves into the ready state.
-
-| High side | enabled |
-| Precharge | enabled |
-| Main contactors | disabled |
-| Torque | not allowed (N) |
-
-## Ready
-
-Precharge is done and the main contactors are closed. Can also be entered
-by turning off the ignition while in drive. After **15 min** of idling,
-the VCM enters **sleep**.
-
-| High side | enabled |
-| Precharge | disabled |
-| Main contactors | enabled |
-| Torque | not allowed (N) |
-
-## Drive
-
-If the key is turned to the **crank** position while in ready, the VCM
-moves into drive mode and starts monitoring the accelerator pedals,
-providing a corresponding torque request to the inverter.
-
-| High side | enabled |
-| Precharge | disabled |
-| Main contactors | enabled |
-| Torque | allowed (F or R) |
-
-## Charging
-
-If the charging cable is connected in **ready** mode, the VCM moves into
-charging mode — preventing the car from driving and allowing the PDM to
-charge the HV battery if the cable is connected to 240 VAC.
-
-| High side | enabled |
-| Precharge | disabled |
-| Main contactors | enabled |
-| Torque | not allowed (N) |
+The VCM's states are the vehicle [[vcm#operating-states|operating states]]:
+off, ready, drive, charge and fault.

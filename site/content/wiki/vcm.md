@@ -11,6 +11,12 @@ sense, the plan is to design a custom version of what Nissan call a VCM
 VCM is the control unit that manages all the main functions of the
 vehicle and coordinates the other components.
 
+The DIY VCM is the main vehicle ECU. It uses two processors: a primary
+processor for vehicle control and a secondary safety processor for
+independent supervision. The VCM handles driver inputs, torque requests,
+inverter and charger communication, contactor power authorization, cooling,
+and brake-light control.
+
 The easiest way to follow development is through the
 [vehicle-controller](https://github.com/aphid-ev/vehicle-controller)
 GitHub repository, which contains both the hardware and the firmware.
@@ -31,10 +37,10 @@ See [[safety]] for the full system view.
 ## Safe state
 
 In case of a critical failure, the car is taken to a safe state by
-disconnecting the high voltage supply through the battery contactors and
-removing the 12 V logic feed to the traction inverter. This prevents the
-motor/inverter from producing torque and removes the risk of electrical
-injury.
+commanding zero torque and, for faults requiring HV shutdown, opening the
+battery contactors. This prevents the motor/inverter from producing torque
+and removes the risk of electrical injury. See the fault state under
+[[#operating-states]].
 
 ## VCM safety design
 
@@ -47,12 +53,36 @@ executing as expected. The two communicate over a serial link.
 - The monitor MCU has read access to the EV-CAN bus and verifies the
   torque request from the main application is reasonable.
 - The monitor MCU controls the high-side switch for the precharge and
-  main contactors and the inverter logic power.
-- The main MCU controls the low-side switch of the precharge and main
-  contactors.
+  main contactors, enabled only while the
+  [[safety#interlock|HV interlock loop]] is valid.
+- The [[bms|BMS]] controllers, not the VCM, switch the low side of the
+  contactor coils. See [[contactors#coil-control]].
 - The main MCU sends watchdog counters over the serial port.
 - The monitor MCU can disable the EV-CAN transceiver and, as a final
   option, reset the main MCU.
+
+# Operating states {#operating-states}
+
+- **Off:** the main contactors and EV-system relay are open. The BMS
+  controllers and the VCM's low-power supply remain on for monitoring and
+  wake-up.
+- **Ready:** the control networks and switched EV loads are powered. After
+  safety checks, the system performs precharge and closes the main
+  contactors; propulsion remains at zero torque until a direction is
+  accepted.
+- **Drive:** a direction has been accepted with the brake applied, the
+  charge connector is absent, and the VCM may command traction or
+  regenerative torque.
+- **Charge:** PP detection initiates the sequence, the VCM inhibits drive
+  and locks the inlet, and the contactors close through the normal
+  precharge sequence. The OBC derives the permitted current from CP.
+- **Fault:** torque is commanded to zero. For faults requiring HV shutdown,
+  or if the main VCM processor stops responding on the internal
+  communication bus, the safety processor removes the high-side
+  contactor-coil supply so the contactors open.
+
+The [[contactors]] page describes precharge, and the
+[[obc#inlet|charge inlet]] section describes the PP and CP signals.
 
 # Hardware
 
@@ -62,7 +92,9 @@ software.
 ## Enclosure
 
 The enclosure is the pretty robust Cinch ModICE ME-MX 24. See
-[[VCM requirements#enclosure]] for part numbers.
+[[VCM requirements#enclosure]] for part numbers. The front and rear
+[[bms#packaging|BMS controllers]] use the same ModICE enclosures with
+Molex MX-150 connectors.
 
 ## Microcontrollers
 
@@ -70,6 +102,11 @@ The main firmware runs on an STM32F405RB microcontroller, with a smaller
 STM32F091CC monitoring it.
 
 ## I/O {#io}
+
+> [!WARNING]
+> This pinout predates the current electrical architecture. It does not
+> yet have the charge inlet proximity pilot, lock and LED signals, the
+> coolant pump PWM and tacho, or the radiator fan relay output.
 
 The VCM has two 12-pin Molex MX-150 connectors:
 
@@ -92,13 +129,15 @@ See [[VCM requirements#i-o]] for the canonical connector pinout.
 
 ### CAN1 (high/low)
 
-Used to communicate with [[EV-CAN]] nodes. Available
-to both the main and the monitor microcontroller.
+Used to communicate with [[EV-CAN]] nodes: the Nissan Leaf inverter and
+the [[obc|Mitsubishi OBC/DC-DC]]. Available to both the main and the
+monitor microcontroller.
 
 ### CAN2 (high/low)
 
-Used to communicate with auxiliary CAN nodes like the instrument cluster.
-Only available to the main controller.
+Used to communicate with the DIY vehicle systems: the front and rear
+[[bms|BMS]] controllers, and future DIY nodes such as a driver display.
+Only available to the main controller. See [[EV-CAN#vehicle-buses]].
 
 ### High side out
 
@@ -111,24 +150,32 @@ Main feed from the 12 V battery.
 
 ### Ignition
 
-+12 V when the ignition switch is in the ignition position.
+The original-style key switch receives a fused 12 V feed and sends separate
+RUN and START signals directly to VCM inputs. The key feed comes from the
+[[LV system#primary-distribution|primary distribution box]].
+
++12 V when the ignition switch is in the ignition (RUN) position.
 
 ### Crank
 
-+12 V when the ignition switch is in the crank position.
++12 V when the ignition switch is in the crank (START) position.
 
 ### Accelerator input (ACC1/ACC2)
 
-Dual channel input from the accelerator pedal.
+The accelerator pedal uses a dual-channel analog position sensor so the
+VCM can cross-check the two signals.
 
 ### Brake input (BRAKE1/BRAKE2)
 
-Dual channel input from the brake sensor.
+The original brake switches connect independently to the VCM. Brake input
+requests regenerative braking, activates the brake lights, and prevents
+positive accelerator torque while the brakes are applied.
 
 ### Direction input (DIR_F1/DIR_F2 and DIR_R1/DIR_R2)
 
-Dual channel input from the [[direction]]. Forward/Reverse
-momentary switches mounted on the gear lever.
+Input from the [[direction]]: momentary reverse and drive switches mounted
+on the gear lever. The VCM accepts a change only while the car is stopped
+with the brake applied, and no active request represents neutral.
 
 ### External 5 V feed
 

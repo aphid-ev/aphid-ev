@@ -9,6 +9,10 @@ The Nissan EM57 motor has been used on several different cars over the
 years. It sits at the bottom of the Nissan Leaf drive stack and is paired
 with the [[inverter]] above it.
 
+The traction motor is an EM57 from a 2014 Nissan Leaf. The inverter
+supplies its three-phase power and receives rotor resolver and
+motor-temperature feedback.
+
 # Mechanical interface
 
 ## Mounting flange

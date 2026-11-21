@@ -10,7 +10,7 @@ and commit the regenerated skill with the upgrade.
 The site's wiki documents the electrical design behind the model: the
 components, 12 V distribution, CAN topology, operating states and the safety
 concept. The pages are `hv-system`, `lv-system`, `batteries`, `bms`,
-`ev-can`, `safety` and `vcm` under `site/content/wiki/`. Read the relevant page before changing
+`contactors`, `obc`, `ev-can`, `safety` and `vcm` under `site/content/wiki/`. Read the relevant page before changing
 a system, and update it in the same commit when the change alters the design.
 
 ## Layout
