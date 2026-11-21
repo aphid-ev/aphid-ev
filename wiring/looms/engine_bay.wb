@@ -49,3 +49,35 @@ view harness "CAN harness" {
     include charger.sig at (0, 26);
     include inv.control at (42, 32);
 }
+
+// --- View: rear LV harness ---
+// The VCM's 12V, cooling and lighting connectors on the left, the loads they
+// drive on the right. The chassis-ground rail runs VCM → pump → fan → stop
+// lamps.
+
+view harness "Rear LV harness" {
+    grid: 20;
+
+    include vcm.lv      at (0, 0);
+    include vcm.cooling at (0, 8);
+    include vcm.lights  at (0, 18);
+
+    include pump.x1     at (44, 0);
+    include fan.x1      at (44, 10);
+    include bl_left.x1  at (44, 18);
+    include bl_right.x1 at (44, 26);
+    include bl_chmsl.x1 at (44, 34);
+}
+
+// --- View: signal ground leads ---
+// The OBC/DC-DC signal ground and the inverter B- come back to the VCM on
+// their own leads rather than on the chassis-ground rail. The CAN1 hop
+// between the two units shows because both connectors are in the view.
+
+view harness "Signal ground leads" {
+    grid: 20;
+
+    include vcm.lv      at (0, 6);
+    include charger.sig at (36, 0);
+    include inv.control at (36, 14);
+}
