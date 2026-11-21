@@ -1951,6 +1951,315 @@ pre.mermaid svg {
 }
 
 /* ============================================================
+   Wiring drawings (wirebug --embed, inlined by aphid)
+   ============================================================ */
+.article figure.inline-svg {
+  padding: var(--sp-4);
+  overflow-x: auto;
+  contain: inline-size; /* a wide drawing scrolls instead of widening the page */
+  background: var(--bg-sunken);
+}
+
+.article figure.inline-svg figcaption {
+  margin: var(--sp-4) calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4));
+}
+
+.inline-svg svg.wirebug {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* On a phone, scroll a drawing sideways rather than shrink its text away */
+@media (max-width: 700px) {
+  .inline-svg svg.wirebug {
+    min-width: 640px;
+  }
+}
+
+.wirebug text {
+  font-family: var(--font-body);
+  fill: var(--fg-1);
+}
+
+.wirebug .title {
+  display: none; /* the figure caption and the page heading name the view */
+}
+
+/* Boxes: schematic components, harness connectors and cable boxes, pinouts */
+.wirebug .component rect,
+.wirebug .connector rect,
+.wirebug .pinout rect {
+  fill: var(--bg-raised);
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+
+.wirebug .connector .header,
+.wirebug .pinout .header {
+  fill: var(--bg-surface);
+}
+
+.wirebug .component-label,
+.wirebug .connector-title,
+.wirebug .pinout-title,
+.wirebug .enclosure-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.wirebug .connector-part,
+.wirebug .pinout-part {
+  font-size: 10px;
+  text-anchor: middle;
+  fill: var(--fg-muted);
+}
+
+.wirebug .row-sep,
+.wirebug .wire-sep {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.wirebug .wire-sep {
+  stroke-dasharray: 2 2;
+}
+
+/* Ports and pins */
+.wirebug .port circle,
+.wirebug .pin-dot {
+  fill: var(--fg-1);
+}
+
+.wirebug .port-label,
+.wirebug .pin-label,
+.wirebug .pin-wire,
+.wirebug .pin-gauge,
+.wirebug .pin-far {
+  font-size: 11px;
+}
+
+.wirebug .pin-num,
+.wirebug .port-pin,
+.wirebug .pin-note {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--fg-muted);
+}
+
+.wirebug-harness .pin-num,
+.wirebug-pinout .pin-num {
+  text-anchor: middle;
+}
+
+.wirebug-pinout .pin-num,
+.wirebug-pinout .pin-label,
+.wirebug-pinout .pin-wire,
+.wirebug-pinout .pin-gauge,
+.wirebug-pinout .pin-far,
+.wirebug-pinout .pin-note {
+  dominant-baseline: central;
+}
+
+.wirebug-pinout .pin-note {
+  text-anchor: end;
+}
+
+.wirebug .pin-unwired,
+.wirebug .pin-drain {
+  fill: var(--fg-faint);
+}
+
+/* Labels drawn over wires get a halo in the drawing's background colour */
+.wirebug .port-label,
+.wirebug .wire-code,
+.wirebug .cable-label,
+.wirebug .off-view-label {
+  paint-order: stroke;
+  stroke: var(--bg-sunken);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.wirebug .wire-code,
+.wirebug .cable-label {
+  font-size: 9px;
+  text-anchor: middle;
+  fill: var(--fg-2);
+}
+
+.wirebug .cable-label-start { text-anchor: start; }
+.wirebug .cable-label-end { text-anchor: end; }
+
+.wirebug .off-view-label {
+  font-size: 10px;
+  fill: var(--fg-muted);
+}
+
+/* Wires: a casing under each conductor keeps dark wires visible */
+.wirebug .wire-casing,
+.wirebug .cable-wire-casing {
+  fill: none;
+  stroke: var(--fg-faint);
+  stroke-width: 4;
+  stroke-linecap: butt;
+}
+
+.wirebug .wire,
+.wirebug .cable-wire,
+.wirebug .wire-tracer,
+.wirebug .cable-wire-tracer {
+  fill: none;
+  stroke-width: 2;
+}
+
+.wirebug .wire-tracer,
+.wirebug .cable-wire-tracer {
+  stroke-dasharray: 4 4;
+}
+
+.wirebug .cable-shield,
+.wirebug .pair-shield,
+.wirebug .drain-wire {
+  fill: none;
+  stroke: var(--fg-muted);
+  stroke-width: 1;
+  stroke-dasharray: 6 3;
+}
+
+.wirebug .drain-label { font-style: italic; }
+
+/* IEC 60757 colours, tuned for the dark background */
+.wirebug [stroke="black"] { stroke: #0E0B09; }
+.wirebug [fill="black"] { fill: #0E0B09; }
+.wirebug [stroke="brown"] { stroke: #9A6233; }
+.wirebug [fill="brown"] { fill: #9A6233; }
+.wirebug [stroke="red"] { stroke: #D9483B; }
+.wirebug [fill="red"] { fill: #D9483B; }
+.wirebug [stroke="orange"] { stroke: #EE8A2C; }
+.wirebug [fill="orange"] { fill: #EE8A2C; }
+.wirebug [stroke="yellow"] { stroke: #E9C93F; }
+.wirebug [fill="yellow"] { fill: #E9C93F; }
+.wirebug [stroke="green"] { stroke: #4FA55A; }
+.wirebug [fill="green"] { fill: #4FA55A; }
+.wirebug [stroke="blue"] { stroke: #4C82E0; }
+.wirebug [fill="blue"] { fill: #4C82E0; }
+.wirebug [stroke="violet"] { stroke: #A174DB; }
+.wirebug [fill="violet"] { fill: #A174DB; }
+.wirebug [stroke="grey"] { stroke: #8E8A85; }
+.wirebug [fill="grey"] { fill: #8E8A85; }
+.wirebug [stroke="white"] { stroke: #F2EEE8; }
+.wirebug [fill="white"] { fill: #F2EEE8; }
+
+/* Schematic extras */
+.wirebug .enclosure rect {
+  fill: none;
+  stroke: var(--fg-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.wirebug .enclosure-label {
+  fill: var(--fg-muted);
+}
+
+.wirebug .text-box rect {
+  fill: var(--bg-surface);
+  stroke: var(--accent-amber);
+  stroke-width: 1.25;
+}
+
+.wirebug .text-box text {
+  font-size: 12px;
+  fill: var(--accent-amber);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Harness extras */
+.wirebug .inline-badge {
+  fill: var(--accent-rust);
+  stroke: none;
+}
+
+.wirebug .inline-badge-text {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--bg-page);
+  text-anchor: middle;
+}
+
+.wirebug .splice-dot {
+  fill: var(--fg-1);
+  stroke: var(--bg-sunken);
+  stroke-width: 1.5;
+}
+
+.wirebug .splice-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.wirebug .splice-label,
+.wirebug .splice-part {
+  font-size: 10px;
+  text-anchor: middle;
+  fill: var(--fg-muted);
+}
+
+/* Pinout faces */
+.wirebug .wire-swatch {
+  stroke: var(--fg-faint);
+  stroke-width: 0.75;
+}
+
+.wirebug .wire-swatch-tracer {
+  stroke: none;
+}
+
+.wirebug .pinout rect.cavity {
+  fill: var(--bg-raised);
+  stroke: var(--fg-2);
+  stroke-width: 1.25;
+}
+
+.wirebug .pinout rect.cavity-unused {
+  fill: var(--bg-sunken);
+  stroke: var(--fg-faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.wirebug .cavity-pin {
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.wirebug .cavity-pin-unused {
+  font-weight: 400;
+  fill: var(--fg-faint);
+}
+
+.wirebug .cavity-label {
+  font-size: 8px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--fg-muted);
+}
+
+.wirebug .pinout-caption {
+  font-size: 10px;
+  font-style: italic;
+  text-anchor: middle;
+  dominant-baseline: central;
+  fill: var(--fg-muted);
+}
+
+/* ============================================================
    Prev/next, TOC, Linked-from
    ============================================================ */
 .prevnext {

@@ -32,6 +32,14 @@ Coming soon... There are some interesting coupler alternatives available:
 
 Coming soon...
 
+## Wiring
+
+![Pinout of the motor's power and feedback connectors](/static/generated/wiring/motor_pinout.svg#inline "Motor pinout")
+
+![Harness drawing of the three phase conductors from the inverter to the motor](/static/generated/wiring/motor_phase_harness.svg#inline "Motor phase harness")
+
+![Harness drawing of the resolver and temperature pairs from the inverter control connector to the motor](/static/generated/wiring/motor_feedback_harness.svg#inline "Motor feedback harness")
+
 ## Resolver connector
 
 The resolver output is an 8-pin Yazaki RH connector.

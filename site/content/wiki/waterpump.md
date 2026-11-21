@@ -37,6 +37,8 @@ The pump draws about *TBD* A from the +12 V feed at full load.
 Though main power is provided through the 12 V feed, the pump is
 controlled and monitored through two 5 V signal lines.
 
+![Schematic of the VCM and fuse box driving the coolant pump and radiator fan](/static/generated/wiring/cooling_system.svg#inline "Cooling system")
+
 ## PWM input
 
 | Pulse width | RPM |

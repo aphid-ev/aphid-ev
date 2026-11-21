@@ -43,6 +43,10 @@ VCM safety path and the relevant BMS.
 The loop is fed from a low-current fuse in the primary distribution box
 and terminates at the VCM; see [[LV system#primary-distribution]].
 
+The harness drawing shows the interlock wiring through the battery packs.
+
+![Harness drawing of the interlock loop through the MSD, front and rear battery and HV junction box](/static/generated/wiring/battery_signal_harness.svg#inline "Battery signal harness")
+
 # Functional safety
 
 The VCM's secondary processor independently monitors the accelerator

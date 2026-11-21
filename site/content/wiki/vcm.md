@@ -160,10 +160,20 @@ RUN and START signals directly to VCM inputs. The key feed comes from the
 
 +12 V when the ignition switch is in the crank (START) position.
 
+The key hangs off the cab loom on its own branch, so the key loom unplugs as one.
+
+![Harness drawing of the cab-loom side of the key branch: the VCM key connector to the inline connector](/static/generated/wiring/cab_loom_key_branch.svg#inline "Cab loom, key branch")
+
+![Harness drawing of the key loom from the inline connector to the key switch](/static/generated/wiring/key_loom.svg#inline "Key loom")
+
 ### Accelerator input (ACC1/ACC2)
 
 The accelerator pedal uses a dual-channel analog position sensor so the
 VCM can cross-check the two signals.
+
+![Harness drawing of the cab-loom side of the pedal branch: the VCM accelerator connector to the inline connector](/static/generated/wiring/cab_loom_pedal_branch.svg#inline "Cab loom, pedal branch")
+
+![Harness drawing of the pedal stub from the inline connector to the accelerator pedal](/static/generated/wiring/pedal_stub.svg#inline "Pedal stub")
 
 ### Brake input (BRAKE1/BRAKE2)
 
@@ -171,11 +181,19 @@ The original brake switches connect independently to the VCM. Brake input
 requests regenerative braking, activates the brake lights, and prevents
 positive accelerator torque while the brakes are applied.
 
+![Harness drawing of the cab-loom side of the brake branch: the VCM brake connector to the inline connector](/static/generated/wiring/cab_loom_brake_branch.svg#inline "Cab loom, brake branch")
+
+![Harness drawing of the brake loom from the inline connector to the two brake sensors](/static/generated/wiring/brake_loom.svg#inline "Brake loom")
+
 ### Direction input (DIR_F1/DIR_F2 and DIR_R1/DIR_R2)
 
 Input from the [[direction]]: momentary reverse and drive switches mounted
 on the gear lever. The VCM accepts a change only while the car is stopped
 with the brake applied, and no active request represents neutral.
+
+![Harness drawing of the cab-loom side of the gear branch: the VCM gear connector to the inline connector](/static/generated/wiring/cab_loom_gear_branch.svg#inline "Cab loom, gear branch")
+
+![Harness drawing of the gear loom from the inline connector to the gear lever](/static/generated/wiring/gear_loom.svg#inline "Gear loom")
 
 ### External 5 V feed
 
