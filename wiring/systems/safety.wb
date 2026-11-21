@@ -13,7 +13,8 @@ extend Vehicle {
     e_stop: EStop "E-Stop";
 
     // --- HV interlock chain ---
-    // Fuse box sources 12V → e-stop → MSD → front → rear → hvjb → inverter → OBC → VCM
+    // Fuse box sources 12V → e-stop → MSD → front → rear → hvjb → inverter → VCM
+    // The Mitsubishi Outlander OBC/DC-DC has no interlock functionality.
     // (the front → rear link runs in the tunnel loom, looms/tunnel.wb)
 
     wire green 0.5 [fuses.interlock, e_stop.interlock_in];
@@ -21,6 +22,5 @@ extend Vehicle {
     wire green 0.5 [msd.interlock_out, front.interlock_in];
     wire green 0.5 [rear.interlock_out, hvjb.interlock_in];
     wire green 0.5 [hvjb.interlock_out, inv.interlock_in];
-    wire green 0.5 [inv.interlock_out, charger.interlock_in];
-    wire green 0.5 [charger.interlock_out, vcm.interlock];
+    wire green 0.5 [inv.interlock_out, vcm.interlock];
 }

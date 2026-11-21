@@ -70,8 +70,7 @@ view schematic "HV System Overview" {
     }
 
     include charger at (75, 25) ports {
-        west:  dc_pos, dc_neg;
-        south: interlock_out, interlock_in;
+        west: dc_pos, dc_neg;
     }
 
     include mot at (95, 9) ports {
