@@ -1986,6 +1986,91 @@ pre.mermaid svg {
   display: none; /* the figure caption and the page heading name the view */
 }
 
+/* Click a drawing to open it full size (script in base.html) */
+.article figure.inline-svg {
+  cursor: zoom-in;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.article figure.inline-svg:hover {
+  border-color: var(--border-strong);
+}
+
+.article figure.inline-svg:focus-visible {
+  outline: 2px solid var(--accent-rust);
+  outline-offset: 2px;
+}
+
+.svg-lightbox {
+  width: calc(100vw - 32px);
+  height: calc(100vh - 32px);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  background: var(--bg-sunken);
+  color: var(--fg-1);
+  box-shadow: var(--shadow-md);
+}
+
+.svg-lightbox[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.svg-lightbox::backdrop {
+  background: rgba(10, 8, 7, 0.8);
+}
+
+.svg-lightbox-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.svg-lightbox-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
+.svg-lightbox-btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg-1);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.svg-lightbox-btn:hover {
+  border-color: var(--accent-rust);
+}
+
+.svg-lightbox-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--sp-5);
+}
+
+.svg-lightbox-body svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.svg-lightbox.actual-size .svg-lightbox-body svg {
+  width: var(--natural-width, 100%);
+  max-width: none;
+}
+
 /* Boxes: schematic components, harness connectors and cable boxes, pinouts */
 .wirebug .component rect,
 .wirebug .connector rect,

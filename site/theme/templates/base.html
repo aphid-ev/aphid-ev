@@ -172,6 +172,69 @@
     })();
   </script>
 
+  <script>
+    // Inlined SVG drawings: click (or Enter/Space) opens a full-window view
+    (() => {
+      const figures = document.querySelectorAll('figure.inline-svg');
+      if (!figures.length) return;
+
+      const dialog = document.createElement('dialog');
+      dialog.className = 'svg-lightbox';
+      dialog.innerHTML = `
+        <div class="svg-lightbox-bar">
+          <span class="svg-lightbox-title"></span>
+          <button type="button" class="svg-lightbox-btn" data-action="size">Actual size</button>
+          <button type="button" class="svg-lightbox-btn" data-action="close" aria-label="Close">✕</button>
+        </div>
+        <div class="svg-lightbox-body"></div>`;
+      document.body.appendChild(dialog);
+      const body = dialog.querySelector('.svg-lightbox-body');
+      const title = dialog.querySelector('.svg-lightbox-title');
+      const sizeBtn = dialog.querySelector('[data-action="size"]');
+      let opener = null;
+
+      function setActual(actual) {
+        dialog.classList.toggle('actual-size', actual);
+        sizeBtn.textContent = actual ? 'Fit width' : 'Actual size';
+      }
+
+      function open(figure) {
+        const svg = figure.querySelector('svg');
+        if (!svg) return;
+        const clone = svg.cloneNode(true);
+        const vb = svg.viewBox && svg.viewBox.baseVal;
+        if (vb && vb.width) clone.style.setProperty('--natural-width', vb.width + 'px');
+        body.replaceChildren(clone);
+        const caption = figure.querySelector('figcaption');
+        title.textContent = caption ? caption.textContent : (svg.getAttribute('aria-label') || '');
+        setActual(false);
+        opener = figure;
+        dialog.showModal();
+        body.scrollTo(0, 0);
+      }
+
+      figures.forEach(figure => {
+        figure.tabIndex = 0;
+        figure.setAttribute('role', 'button');
+        figure.setAttribute('aria-label', 'Open drawing full size' +
+          (figure.querySelector('figcaption') ? ': ' + figure.querySelector('figcaption').textContent : ''));
+        figure.addEventListener('click', () => open(figure));
+        figure.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(figure); }
+        });
+      });
+
+      sizeBtn.addEventListener('click', () => setActual(!dialog.classList.contains('actual-size')));
+      dialog.querySelector('[data-action="close"]').addEventListener('click', () => dialog.close());
+      // A click on the backdrop lands on the dialog element itself
+      dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+      dialog.addEventListener('close', () => {
+        body.replaceChildren();
+        if (opener) opener.focus();
+      });
+    })();
+  </script>
+
   {% if contains_mermaid %}
   <script src="/static/js/mermaid.min.js"></script>
   <script>
