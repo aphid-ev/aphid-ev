@@ -1,14 +1,15 @@
 ---
 id: sv2a
 title: Move the wirebug model into wiring/ and render it on the site
-status: open
+status: review
 priority: P2
 created: "2026-11-21T12:51:14.851053117Z"
-updated: "2026-11-21T12:51:14.851053117Z"
+updated: "2026-11-21T22:30:22.297735433Z"
 tags:
   - wiring
   - site
   - ci
+attempts: 1
 ---
 
 The vehicle wiring model (`aphid-evpack`) is still in its own repository, cloned at ~/dev/wiring. `wiring/` in the monorepo has only a justfile and README, so `just wiring check` fails with "no `wirebug.toml`".
