@@ -1,0 +1,40 @@
+// Combined On-Board Charger and DC-DC converter
+// Self-powered from HV bus. Charges from 1-phase AC inlet.
+// Provides 12V output to the vehicle electrical system.
+
+component ObcDcdc {
+    connector hv "HV DC 2p" {
+        pub port dc_pos "DC+" pin 1;
+        pub port dc_neg "DC-" pin 2;
+    }
+
+    connector ac "AC inlet 3p" {
+        pub port ac_l  "AC L" pin 1;
+        pub port ac_n  "AC N" pin 2;
+        pub port ac_pe "AC PE" pin 3;
+    }
+
+    connector lv "12V output 4p" {
+        pub port out_pos "12V OUT+" pins [1, 2];
+        pub port out_neg "12V OUT-" pins [3, 4];
+    }
+
+    // 13-pin signal connector (Sumitomo 6189-1092). Carries the CAN control
+    // bus, the DC/DC enable and its supply/sense lines, and the charge-port
+    // control pilot. Pin numbers follow the Mitsubishi wiring diagram.
+    // (openinverter.org/wiki/Mitsubishi_Outlander_DCDC_OBC)
+    connector sig "Signal 13p" {
+        pub port dc_sw "DC SW" pin 4;    // DC/DC enable — from the VCM
+        pub port can_h "CAN H" pin 6;
+        pub port sense "SENSE" pin 7;    // permanent +12V sense
+        pub port igct  "IGCT"  pin 8;    // switched +12V main supply (HV-active)
+        pub port cp    "CP"    pin 9;    // control pilot from the charge port
+        pub port gnd   "GND"   pin 10;
+        pub port can_l "CAN L" pin 13;
+    }
+
+    connector intlk "Interlock 2p" {
+        pub port interlock_in  "INTLK IN" pin 1;
+        pub port interlock_out "INTLK OUT" pin 2;
+    }
+}

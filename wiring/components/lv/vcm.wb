@@ -1,0 +1,82 @@
+// Vehicle Control Module
+// Central controller: manages drive logic, safety monitoring,
+// and contactor enable via safe power output.
+// Interlock terminates here — VCM uses it internally to gate
+// the high-side switch that sources safe power.
+
+
+component Vcm {
+    // CAN1 — powertrain link, straight to the inverter.
+    connector can1 "CAN 4p" {
+        pub port can1_h "CAN1 H" pin 1;
+        pub port can1_l "CAN1 L" pin 2;
+    }
+
+    // CAN2 — vehicle bus to the BMS pair and the charger. VCM terminates
+    // this end of the bus (120 Ω).
+    connector can2 "CAN 4p" {
+        pub port can2_h "CAN2 H" pin 1;
+        pub port can2_l "CAN2 L" pin 2;
+    }
+
+    connector lv "12V 2p" {
+        pub port b_pos "B+" pin 1;
+        pub port gnd   "GND" pin 2;
+    }
+
+    connector accel "Accelerator 4p" {
+        pub port accel_1   "ACCEL 1" pin 1;
+        pub port accel_2   "ACCEL 2" pin 2;
+        pub port accel_gnd "ACCEL GND" pin 3;
+        pub port accel_5v  "ACCEL 5V" pin 4;
+    }
+
+    connector brake "Brake 2p" {
+        pub port brake_1 "BRAKE 1" pin 1;
+        pub port brake_2 "BRAKE 2" pin 2;
+    }
+
+    // Thermal management: PWM-drive the coolant pump and read its tacho,
+    // and switch the radiator fan relay.
+    connector cooling "Cooling 3p" {
+        pub port pump_pwm  "PUMP PWM"  pin 1;
+        pub port pump_tach "PUMP TACH" pin 2;
+        pub port fan_ctrl  "FAN CTRL"  pin 3;
+    }
+
+    // Exterior lighting. The stop lamps are driven high-side straight from
+    // here — the VCM asserts them on a brake switch input (brake_1/brake_2)
+    // or active regenerative braking, so regen alone still lights the stops.
+    connector lights "Lights 1p" {
+        pub port brake "BRAKE" pin 1;
+    }
+
+    // Ignition key inputs — the RUN and START signals from the dash key.
+    connector key "Key 2p" {
+        pub port ign   "IGN"   pin 1;
+        pub port crank "CRANK" pin 2;
+    }
+
+    // Gear selector — momentary R/D requests. Accepted only on a press edge
+    // with the brake applied and the vehicle stopped; otherwise neutral.
+    connector gear "Gear 2p" {
+        pub port r "R" pin 1;
+        pub port d "D" pin 2;
+    }
+
+    // AC charging — proximity pilot from the charge port (cable detection),
+    // and the DC/DC enable that starts the OBC once the HV system is up.
+    connector charge "Charge 2p" {
+        pub port pp      "PP"      pin 1;
+        pub port dcdc_en "DCDC EN" pin 2;
+    }
+
+    // Interlock termination — single input, no output
+    pub port interlock "INTLK";
+
+    // Safe power output — enabled when interlock + safety OK
+    pub port safe_pwr "SAFE PWR";
+
+    // EV-12V master relay drive — energises the fuse box relay when EV on
+    pub port ev_ctrl "EV CTRL";
+}

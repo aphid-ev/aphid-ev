@@ -1,0 +1,81 @@
+// Aphid EV — 12V system: distribution, chassis ground, and safe power.
+//
+// A `Vehicle` fragment owning the fuse box and every 12V feed and ground
+// wire. The DC-DC source (`charger`) and the consumers live in other
+// fragments; this file owns the *signals* — 12V, ground, safe power.
+
+use FuseBox from "../components/lv/fuse_box.wb";
+use LvBattery from "../components/lv/lv_battery.wb";
+
+extend Vehicle {
+    fuses: FuseBox   "Fuse Box";
+    aux:   LvBattery "12V battery";
+
+    // --- Safe power ---
+    // VCM enables safe power when interlock OK + safety checks pass.
+    // Feeds contactor high-side in both battery packs; the front pack
+    // is fed through the tunnel loom (looms/tunnel.wb).
+
+    wire red 2.5 [vcm.safe_pwr, rear.safe_pwr];
+
+    // VCM drives the fuse box's EV-12V master relay coil.
+    wire blue 0.5 [vcm.ev_ctrl, fuses.ev_ctrl];
+
+    // VCM drives the fuse box's radiator fan relay coil.
+    wire blue 0.5 [vcm.fan_ctrl, fuses.fan_ctrl];
+
+    // --- OBC / DC-DC control (Outlander unit) ---
+    // SENSE is permanent 12V; IGCT is switched with the HV-active EV-12V
+    // rail so the OBC only draws HV after precharge; the VCM asserts DC SW
+    // to enable the DC/DC output once the HV system is up.
+    wire red  1.0 [fuses.obc,    charger.sense];
+    wire red  1.0 [fuses.ev_12v, charger.igct];
+    wire blue 0.5 [vcm.dcdc_en,  charger.dc_sw];
+
+    // --- 12V distribution ---
+    // DC-DC charges the 12V battery and feeds the fuse box; the battery
+    // buffers the bus and keeps it always-hot. Fuse box distributes onward.
+
+    wire red 6.0 [charger.out_pos, aux.pos, fuses.batt_in];
+
+    wire red 2.5 [fuses.vcm, vcm.b_pos];
+    wire red 2.5 [fuses.inv, inv.b_pos];
+    wire red 2.5 [fuses.bms_front, front.b_pos];
+    wire red 2.5 [fuses.bms_rear, rear.b_pos];
+
+    // --- Chassis ground ---
+    // Power returns share the chassis ground bus. The three grounds that sit
+    // on signal connectors (OBC signal GND, inverter B-, front BMS GND) come
+    // back to the VCM ground on their own leads, so the shared bus never
+    // decomposes into a segment drawn across those connectors in a harness
+    // view. (The rear pack grounds through the tunnel loom.)
+    wire black 6.0 [
+        charger.out_neg, aux.neg, vcm.gnd,
+        pump.gnd, fan.gnd,
+        bl_left.gnd, bl_right.gnd, bl_chmsl.gnd,
+    ];
+    wire black 1.0 [vcm.gnd, charger.gnd];
+    wire black 2.5 [vcm.gnd, inv.b_neg];
+    wire black 2.5 [vcm.gnd, front.gnd];
+}
+
+// --- View: 12V supply ---
+// The DC-DC keeps the 12V battery charged and feeds the fuse box; the
+// battery sits across the bus (always-hot). Grounds return to chassis.
+
+view schematic "12V supply" {
+    grid: 20;
+
+    include charger at (3, 4) ports {
+        east: out_pos, out_neg;
+    }
+
+    include aux at (3, 13) ports {
+        east: pos, neg;
+    }
+
+    include fuses at (22, 8) ports {
+        west: batt_in;
+        east: vcm, key;
+    }
+}
