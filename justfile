@@ -8,6 +8,8 @@
 # Tool versions CI installs. Bump here to adopt a newer release.
 aphid_version := 'v0.5.1'
 wirebug_version := 'v0.1.0'
+# The hoster release running on hoster.lhelge.se, for `hoster stack check`.
+hoster_version := 'v0.11.0'
 bin := env('HOME') / '.local/bin'
 
 # Host workspace: shared crates, host library, desktop app, tools
@@ -39,7 +41,7 @@ artifacts: hardware-export wiring::render
 docs: artifacts site::build
 
 # Everything CI runs, across all components
-ci: host::ci can-usb::ci vcm::ci bms::ci bootloader::ci wiring::check docs
+ci: host::ci can-usb::ci vcm::ci bms::ci bootloader::ci wiring::check site::check-stack docs
 
 # Release notes since a component's last tag (vcm, vcm-hw, bms, bms-hw, can-usb, can-usb-hw, bootloader, manager)
 changelog component:
@@ -67,6 +69,10 @@ changelog component:
     for path in "${paths[@]}"; do args+=(--include-path "$path"); done
     git cliff --unreleased --tag-pattern "$tags" "${args[@]}"
 
+# aphid-server image tag for the site: the aphid release that builds it
+aphid-server-version:
+    @echo "{{ trim_start_match(aphid_version, 'v') }}"
+
 # Install the pinned aphid release (Linux x86_64)
 install-aphid:
     mkdir -p {{ bin }}
@@ -79,3 +85,17 @@ install-wirebug:
     curl -fsSL -o {{ bin }}/wirebug https://github.com/LHelge/wirebug/releases/download/{{ wirebug_version }}/wirebug-linux-x86_64
     chmod +x {{ bin }}/wirebug
     {{ bin }}/wirebug --version
+
+# Install the pinned hoster release (Linux x86_64), checked against its SHA256SUMS
+install-hoster:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "$tmp"' EXIT
+    url=https://github.com/LHelge/hoster/releases/download/{{ hoster_version }}
+    curl -fsSL -o "$tmp/hoster-x86_64-unknown-linux-musl" "$url/hoster-x86_64-unknown-linux-musl"
+    curl -fsSL -o "$tmp/SHA256SUMS" "$url/SHA256SUMS"
+    (cd "$tmp" && sha256sum --check --ignore-missing --quiet SHA256SUMS)
+    mkdir -p {{ bin }}
+    install -m 755 "$tmp/hoster-x86_64-unknown-linux-musl" {{ bin }}/hoster
+    {{ bin }}/hoster --version

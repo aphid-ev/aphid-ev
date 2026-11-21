@@ -1,0 +1,28 @@
+#:schema https://docs.hoster.lhelge.se/stack.schema.json
+# hoster stack for the documentation site (https://bladlus.se).
+#
+# Applied by hand in hoster's UI (Stacks → New stack / Apply); CI only sends
+# image digests. .github/workflows/site.yml builds ghcr.io/aphid-ev/site and
+# posts its digest to hoster's deploy webhook. `just site check-stack` checks
+# this file in CI.
+version = 1
+name = "bladlus"
+
+[services.web]
+image = "ghcr.io/aphid-ev/site"   # pushed by site.yml, deployed by digest
+
+# aphid-server listens on $PORT, which hoster sets to the route's port, and
+# answers hoster's default health probe (GET /healthz).
+[services.web.env]
+APHID_LOG_FORMAT = "json"
+
+[[services.web.routes]]
+host = "bladlus.se"
+port = 8080
+
+# Only this repository may deploy, from main, and only from jobs in the
+# protected "production" GitHub environment.
+[deploy]
+repository_id = 1466408375            # gh api repos/aphid-ev/aphid-ev --jq .id
+refs = ["refs/heads/main"]
+environment = "production"

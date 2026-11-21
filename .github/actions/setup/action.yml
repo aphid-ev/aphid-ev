@@ -6,7 +6,7 @@ description: >-
 
 inputs:
   tools:
-    description: Space-separated tools to install with `just install-<tool>` (aphid, wirebug)
+    description: Space-separated tools to install with `just install-<tool>` (aphid, wirebug, hoster)
     required: false
     default: ''
   kicad:

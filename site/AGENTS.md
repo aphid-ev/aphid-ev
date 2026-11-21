@@ -51,7 +51,13 @@ hyphens stay.
 - Use WebP for photos. Keep PNG for diagrams with hard edges or small text
   (`vcm_pinout.png`) and for `static/logo.png`, the favicon source.
 
-## Old site
+## Deployment
+
+`site.yml` builds the site on every push to `main`, packs `dist/` into an
+aphid-server image with `Dockerfile` and deploys it to hoster.lhelge.se. The
+stack file is `hoster/bladlus.stack.toml`. CI sends only image digests. A
+change to the stack file takes effect when the user applies it in hoster's UI,
+so tell the user when you change it. `just site check-stack` validates it.
 
 `static/sw.js` unregisters the service worker left behind by the old Jekyll
 theme. Keep it until visitors from that era are gone.
