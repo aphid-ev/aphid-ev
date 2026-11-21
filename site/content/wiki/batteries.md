@@ -35,6 +35,14 @@ or precharge hardware. Its enclosure therefore contains only the six cell
 modules, BMS electronics, main contactors, and their associated
 connections.
 
+# Wiring
+
+![Schematic of the front battery: six cell modules, main contactors, MSD and precharge](/static/generated/wiring/front_battery.svg#inline "Front battery")
+
+![Schematic of the rear battery: six cell modules and main contactors](/static/generated/wiring/rear_battery.svg#inline "Rear battery")
+
+![Schematic of one 8s2p cell module and its monitoring connections](/static/generated/wiring/cell_module.svg#inline "Cell module")
+
 # Current shunt
 
 For current measurement on the pack:

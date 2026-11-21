@@ -54,3 +54,11 @@ lock-position feedback remain to be selected.
 
 The charge sequence is described under
 [[vcm#operating-states|operating states]].
+
+## Charge wiring
+
+![Schematic of the charging control signals: CP to the OBC, PP and the DC/DC enable to the VCM](/static/generated/wiring/charging_control.svg#inline "Charging control")
+
+![Harness drawing of the CP, PP and DC/DC enable leads between the inlet, OBC/DC-DC and VCM](/static/generated/wiring/charge_signal_harness.svg#inline "Charge signal harness")
+
+![Harness drawing of the AC lead from the charge inlet to the OBC](/static/generated/wiring/ac_charge_harness.svg#inline "AC charge harness")

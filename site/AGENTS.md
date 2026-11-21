@@ -14,6 +14,12 @@ monorepo.
 - `static/generated/` is produced by `just artifacts` from the KiCad projects
   and the wirebug model. Never edit or commit files there; change the source
   and regenerate. Reference them by their `/static/generated/…` path.
+- Wiring drawings are inlined from `/static/generated/wiring/` with
+  `![alt](/static/generated/wiring/<view>.svg#inline "Caption")`, so the theme's
+  `.wirebug` rules can style them. The file names come from the view titles
+  in `wiring/` (see `manifest.json` after a render). `aphid build` fails when
+  an inlined file is missing, so run `just docs`, or `just wiring render`
+  before `just site build`.
 - Facts that are defined in code (CAN messages, parameters, pinouts) should be
   generated or linked, not retyped. If a page needs a table that only exists
   in code, say so instead of copying values by hand.

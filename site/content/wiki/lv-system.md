@@ -19,7 +19,21 @@ system online.
 
 # Electrical diagram
 
-*TBD.*
+![Schematic of the 12 V supply: the DC-DC and the 12 V battery feeding the fuse box](/static/generated/wiring/12v_supply.svg#inline "12 V supply")
+
+![Schematic of the VCM brake-light output feeding three stop lamps](/static/generated/wiring/brake_lights.svg#inline "Brake lights")
+
+## Harness
+
+The rear loom carries the VCM's 12 V, cooling and lighting leads and the
+chassis-ground rail.
+
+![Harness drawing of the rear LV loom from the VCM to the coolant pump, radiator fan and stop lamps](/static/generated/wiring/rear_lv_harness.svg#inline "Rear LV harness")
+
+The OBC/DC-DC signal ground and the inverter B- return to the VCM on their
+own leads.
+
+![Harness drawing of the ground leads from the OBC/DC-DC and the inverter to the VCM](/static/generated/wiring/signal_ground_leads.svg#inline "Signal ground leads")
 
 # DC/DC
 

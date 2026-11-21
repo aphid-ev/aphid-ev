@@ -35,4 +35,12 @@ loop.
 
 # Electrical diagram
 
-*TBD.*
+The schematic follows the HV bus from the battery string through the MSD and
+the junction box to the inverter, motor and OBC/DC-DC. The interlock loop runs
+along the bottom.
+
+![Schematic of the HV system: battery string, MSD, HV junction box, inverter, motor and OBC/DC-DC](/static/generated/wiring/hv_system_overview.svg#inline "HV system overview")
+
+## Harness
+
+![Harness drawing of the HV cables between the batteries, MSD, junction box, inverter and OBC/DC-DC](/static/generated/wiring/main_hv_harness.svg#inline "Main HV harness")

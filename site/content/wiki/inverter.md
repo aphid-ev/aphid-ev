@@ -73,6 +73,10 @@ Not all pins are populated.
 Since the high power 12 V supply is fused at 10 A, 1.5 mm² should be
 enough.
 
+The wiring model gives these pinouts for the connectors:
+
+![Pinout of the inverter's HV, motor phase and control connectors](/static/generated/wiring/inverter_pinouts.svg#inline "Inverter pinouts")
+
 ## Interlock {#interlock}
 
 The inverter contains an interlock circuit that breaks a connection if
