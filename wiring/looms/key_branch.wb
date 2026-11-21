@@ -7,8 +7,8 @@
 // the VCM. The main run carries the female half; the key loom the male.
 
 use KeySwitch from "../components/lv/key_switch.wb";
-use Dt04_3p from "../components/connectors.wb";
-use Dt06_3s from "../components/connectors.wb";
+use Dt04_3p   from "../components/connectors.wb";
+use Dt06_3s   from "../components/connectors.wb";
 
 extend Vehicle {
     key: KeySwitch "Ignition key";
@@ -27,9 +27,9 @@ extend Vehicle {
     cable key_feed "Key feed" {
         type: "3-core";
 
-        wire red    1.0 "FEED"  [fuses.key,     ic_key.feed];
-        wire violet 0.5 "IGN"   [ic_key.ign,    vcm.ign];
-        wire grey   0.5 "CRANK" [ic_key.crank,  vcm.crank];
+        wire red    1.0 "FEED"  [fuses.key,    ic_key.feed];
+        wire violet 0.5 "IGN"   [ic_key.ign,   vcm.ign];
+        wire grey   0.5 "CRANK" [ic_key.crank, vcm.crank];
     }
 
     // Key loom: the ~2 m run from the branch point to the dash key switch.
@@ -37,9 +37,9 @@ extend Vehicle {
         type:   "3-core";
         length: 2.0;
 
-        wire red    1.0 "FEED"  [ic_key.feed,   key.batt];
-        wire violet 0.5 "IGN"   [ic_key.ign,    key.ign];
-        wire grey   0.5 "CRANK" [ic_key.crank,  key.crank];
+        wire red    1.0 "FEED"  [ic_key.feed,  key.batt];
+        wire violet 0.5 "IGN"   [ic_key.ign,   key.ign];
+        wire grey   0.5 "CRANK" [ic_key.crank, key.crank];
     }
 }
 

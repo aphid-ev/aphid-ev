@@ -7,8 +7,8 @@
 // carries the female half; the gear loom the male.
 
 use GearLever from "../components/lv/gear_lever.wb";
-use Dt04_3p from "../components/connectors.wb";
-use Dt06_3s from "../components/connectors.wb";
+use Dt04_3p   from "../components/connectors.wb";
+use Dt06_3s   from "../components/connectors.wb";
 
 extend Vehicle {
     gear: GearLever "Gear lever";

@@ -19,7 +19,7 @@ extend Vehicle {
 
         twisted {
             wire white/blue 0.5 "CAN1 H" [vcm.can1_h, charger.can_h];
-            wire white/red 0.5 "CAN1 L" [vcm.can1_l, charger.can_l];
+            wire white/red  0.5 "CAN1 L" [vcm.can1_l, charger.can_l];
         }
     }
 
@@ -29,7 +29,7 @@ extend Vehicle {
 
         twisted {
             wire white/blue 0.5 "CAN1 H" [charger.can_h, inv.can_h];
-            wire white/red 0.5 "CAN1 L" [charger.can_l, inv.can_l];
+            wire white/red  0.5 "CAN1 L" [charger.can_l, inv.can_l];
         }
     }
 
@@ -40,7 +40,7 @@ extend Vehicle {
 
         twisted {
             wire white/blue 0.5 "CAN2 H" [rear.can_h, vcm.can2_h];
-            wire white/red 0.5 "CAN2 L" [rear.can_l, vcm.can2_l];
+            wire white/red  0.5 "CAN2 L" [rear.can_l, vcm.can2_l];
         }
     }
 }
@@ -53,9 +53,9 @@ extend Vehicle {
 view schematic "CAN bus" {
     grid: 20;
 
-    text front_term at (8, 4)  "120 Ω termination";
-    text vcm_term   at (40, 4) "120 Ω termination";
-    text inv_term   at (72, 4) "120 Ω termination";
+    text "120 Ω termination" at (8, 4);
+    text "120 Ω termination" at (40, 4);
+    text "120 Ω termination" at (72, 4);
 
     include front at (8, 12) ports {
         south: can_h, can_l;

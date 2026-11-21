@@ -5,8 +5,7 @@
 // no instances or wires of its own — it exists to bind the views to the
 // merged Vehicle namespace.
 
-extend Vehicle {
-}
+extend Vehicle {}
 
 // --- View: Main HV harness ---
 // The HV bus as a wiring harness: each box's HV connector as a pin table,

@@ -10,15 +10,15 @@ component CellModule {
         pub port hv_neg "HV-";
 
         connector meas "Measurement 13p" {
-            pub port c0  "C0" pin 1;
-            pub port c1  "C1" pin 2;
-            pub port c2  "C2" pin 3;
-            pub port c3  "C3" pin 4;
-            pub port c4  "C4" pin 5;
-            pub port c5  "C5" pin 6;
-            pub port c6  "C6" pin 7;
-            pub port c7  "C7" pin 8;
-            pub port c8  "C8" pin 9;
+            pub port c0     "C0"    pin 1;
+            pub port c1     "C1"    pin 2;
+            pub port c2     "C2"    pin 3;
+            pub port c3     "C3"    pin 4;
+            pub port c4     "C4"    pin 5;
+            pub port c5     "C5"    pin 6;
+            pub port c6     "C6"    pin 7;
+            pub port c7     "C7"    pin 8;
+            pub port c8     "C8"    pin 9;
             pub port ntc1_p "NTC1+" pin 10;
             pub port ntc1_n "NTC1-" pin 11;
             pub port ntc2_p "NTC2+" pin 12;
@@ -28,15 +28,15 @@ component CellModule {
 
     component BmsSlave {
         connector cells "Cell taps 9p" {
-            pub port c0  "C0" pin 1;
-            pub port c1  "C1" pin 2;
-            pub port c2  "C2" pin 3;
-            pub port c3  "C3" pin 4;
-            pub port c4  "C4" pin 5;
-            pub port c5  "C5" pin 6;
-            pub port c6  "C6" pin 7;
-            pub port c7  "C7" pin 8;
-            pub port c8  "C8" pin 9;
+            pub port c0 "C0" pin 1;
+            pub port c1 "C1" pin 2;
+            pub port c2 "C2" pin 3;
+            pub port c3 "C3" pin 4;
+            pub port c4 "C4" pin 5;
+            pub port c5 "C5" pin 6;
+            pub port c6 "C6" pin 7;
+            pub port c7 "C7" pin 8;
+            pub port c8 "C8" pin 9;
         }
 
         connector temp "Temperature 4p" {
@@ -59,7 +59,7 @@ component CellModule {
 
     // --- Instances ---
 
-    pack: CellPack;
+    pack:  CellPack;
     slave: BmsSlave;
 
     // --- External interface ---
@@ -79,15 +79,15 @@ component CellModule {
     wire orange 50 [hv_neg, pack.hv_neg];
 
     // Cell measurement taps — pack to slave
-    wire black 0.25 [pack.c0,  slave.c0];
-    wire black 0.25 [pack.c1,  slave.c1];
-    wire black 0.25 [pack.c2,  slave.c2];
-    wire black 0.25 [pack.c3,  slave.c3];
-    wire black 0.25 [pack.c4,  slave.c4];
-    wire black 0.25 [pack.c5,  slave.c5];
-    wire black 0.25 [pack.c6,  slave.c6];
-    wire black 0.25 [pack.c7,  slave.c7];
-    wire black 0.25 [pack.c8,  slave.c8];
+    wire black 0.25 [pack.c0, slave.c0];
+    wire black 0.25 [pack.c1, slave.c1];
+    wire black 0.25 [pack.c2, slave.c2];
+    wire black 0.25 [pack.c3, slave.c3];
+    wire black 0.25 [pack.c4, slave.c4];
+    wire black 0.25 [pack.c5, slave.c5];
+    wire black 0.25 [pack.c6, slave.c6];
+    wire black 0.25 [pack.c7, slave.c7];
+    wire black 0.25 [pack.c8, slave.c8];
 
     // Temperature sensors — pack to slave
     wire black 0.25 [pack.ntc1_p, slave.ntc1_p];
@@ -130,5 +130,5 @@ view schematic "Cell Module" {
         south: iso_spi_down_h, iso_spi_down_l;
     }
 
-    text pack_note at (6, 24) "8s2p cell pack from a Renault Zoe";
+    text "8s2p cell pack from a Renault Zoe" at (6, 24);
 }

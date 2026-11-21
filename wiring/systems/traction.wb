@@ -2,7 +2,7 @@
 //
 // A `Vehicle` fragment: the battery string, HV junction box, inverter,
 // OBC/DC-DC, and drive motor, plus the HV bus and the motor-phase cable
-// that tie them together. `main.wb` merges this in with `use Vehicle`.
+// that tie them together. `main.wb` pulls this in with a `fragment` line.
 // This file carries its own `use` imports for the types it instantiates;
 // the HV bus wires reach `msd` (declared in systems/safety.wb) through
 // the merged flat namespace.
@@ -27,14 +27,14 @@ extend Vehicle {
     // the HV junction box. The front battery negative leg passes through the
     // MSD (in systems/safety.wb) before becoming the pack negative input.
 
-    wire orange 50 "Series link" [front.hv_pos, rear.hv_neg];
-    wire orange 50 "Pack HV+" [rear.hv_pos, hvjb.pack_pos_in];
-    wire orange 50 "Front HV-" [front.hv_neg, msd.hv_in];
-    wire orange 50 "Pack HV-" [msd.hv_out, hvjb.pack_neg_in];
+    wire orange 50 "Series link"  [front.hv_pos, rear.hv_neg];
+    wire orange 50 "Pack HV+"     [rear.hv_pos,  hvjb.pack_pos_in];
+    wire orange 50 "Front HV-"    [front.hv_neg, msd.hv_in];
+    wire orange 50 "Pack HV-"     [msd.hv_out,   hvjb.pack_neg_in];
     wire orange 50 "Inverter HV+" [hvjb.inv_pos, inv.dc_pos];
     wire orange 50 "Inverter HV-" [hvjb.inv_neg, inv.dc_neg];
-    wire orange 50 "OBC HV+" [hvjb.obc_pos, charger.dc_pos];
-    wire orange 50 "OBC HV-" [hvjb.obc_neg, charger.dc_neg];
+    wire orange 50 "OBC HV+"      [hvjb.obc_pos, charger.dc_pos];
+    wire orange 50 "OBC HV-"      [hvjb.obc_neg, charger.dc_neg];
 
     // --- Motor phases ---
     // A real point-to-point cable: three conductors, inverter to motor.
@@ -59,19 +59,19 @@ extend Vehicle {
         length: 1.2;
 
         twisted {
-            wire yellow 0.5 "EX+" [inv.res_ex_pos, mot.res_ex_pos];
+            wire yellow       0.5 "EX+" [inv.res_ex_pos, mot.res_ex_pos];
             wire yellow/black 0.5 "EX-" [inv.res_ex_neg, mot.res_ex_neg];
         }
         twisted {
-            wire green 0.5 "SIN+" [inv.res_sin_pos, mot.res_sin_pos];
+            wire green       0.5 "SIN+" [inv.res_sin_pos, mot.res_sin_pos];
             wire green/black 0.5 "SIN-" [inv.res_sin_neg, mot.res_sin_neg];
         }
         twisted {
-            wire blue 0.5 "COS+" [inv.res_cos_pos, mot.res_cos_pos];
+            wire blue       0.5 "COS+" [inv.res_cos_pos, mot.res_cos_pos];
             wire blue/black 0.5 "COS-" [inv.res_cos_neg, mot.res_cos_neg];
         }
         twisted {
-            wire white 0.5 "TEMP+" [inv.motor_temp_pos, mot.temp_pos];
+            wire white       0.5 "TEMP+" [inv.motor_temp_pos, mot.temp_pos];
             wire white/black 0.5 "TEMP-" [inv.motor_temp_neg, mot.temp_neg];
         }
     }

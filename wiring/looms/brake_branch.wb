@@ -9,8 +9,8 @@
 // both sensors; each sensor returns a switched signal to the VCM.
 
 use BrakeSensor from "../components/lv/brake_sensor.wb";
-use Dt04_3p from "../components/connectors.wb";
-use Dt06_3s from "../components/connectors.wb";
+use Dt04_3p     from "../components/connectors.wb";
+use Dt06_3s     from "../components/connectors.wb";
 
 extend Vehicle {
     bs1: BrakeSensor "Brake sensor 1";
@@ -41,7 +41,7 @@ extend Vehicle {
         type:   "3-core";
         length: 2.0;
 
-        wire red   0.75 "EV 12V" [ic_brake.v12,   bs1.b_pos];
+        wire red   0.75 "EV 12V" [ic_brake.v12,    bs1.b_pos];
         wire brown 0.5  "BRAKE1" [ic_brake.brake1, bs1.sig];
         wire grey  0.5  "BRAKE2" [ic_brake.brake2, bs2.sig];
     }

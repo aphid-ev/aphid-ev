@@ -18,12 +18,12 @@ component RearBattery {
         pub port safe_pwr "SAFE PWR";
         pub port coil_n   "COIL-";
 
-        wire orange 50 [in, c_pre.in];
+        wire orange 50 [in,        c_pre.in];
         wire orange 50 [c_pre.out, r_pre.a];
-        wire orange 50 [r_pre.b, out];
+        wire orange 50 [r_pre.b,   out];
 
-        wire red 1.0 [safe_pwr, c_pre.coil_p];
-        wire black 1.0 [coil_n, c_pre.coil_n];
+        wire red   1.0 [safe_pwr, c_pre.coil_p];
+        wire black 1.0 [coil_n,   c_pre.coil_n];
     }
 
     // --- Instances ---
@@ -51,7 +51,7 @@ component RearBattery {
     // Signal connector, mirroring the front battery's — the CAN pins must
     // be connectorized to appear in the vehicle's CAN harness view.
     connector bms_signals "Molex MX-150" {
-        pub port b_pos "B+" pin 1;
+        pub port b_pos "B+"  pin 1;
         pub port gnd   "GND" pin 2;
 
         pub port safe_pwr "SAFE PWR" pin 3;
@@ -59,7 +59,7 @@ component RearBattery {
         pub port can_h "CAN H" pin 4;
         pub port can_l "CAN L" pin 5;
 
-        pub port interlock_in  "INTLK IN" pin 6;
+        pub port interlock_in  "INTLK IN"  pin 6;
         pub port interlock_out "INTLK OUT" pin 7;
     }
 
@@ -68,7 +68,7 @@ component RearBattery {
     // Both paths merge at module_1.hv_pos
     // Negative side: module_6 → c_neg → hv_neg
 
-    wire orange 50 [hv_pos, c_pos.in, precharge.in];
+    wire orange 50 [hv_pos,        c_pos.in,  precharge.in];
     wire orange 50 [precharge.out, c_pos.out, module_1.hv_pos];
 
     wire orange 50 [module_1.hv_neg, module_2.hv_pos];
@@ -77,12 +77,12 @@ component RearBattery {
     wire orange 50 [module_4.hv_neg, module_5.hv_pos];
     wire orange 50 [module_5.hv_neg, module_6.hv_pos];
     wire orange 50 [module_6.hv_neg, c_neg.in];
-    wire orange 50 [c_neg.out, hv_neg];
+    wire orange 50 [c_neg.out,       hv_neg];
 
     // --- ISO-SPI daisy chain ---
 
-    wire black 0.25 [bms.iso_spi_h, module_1.iso_spi_up_h];
-    wire black 0.25 [bms.iso_spi_l, module_1.iso_spi_up_l];
+    wire black 0.25 [bms.iso_spi_h,           module_1.iso_spi_up_h];
+    wire black 0.25 [bms.iso_spi_l,           module_1.iso_spi_up_l];
     wire black 0.25 [module_1.iso_spi_down_h, module_2.iso_spi_up_h];
     wire black 0.25 [module_1.iso_spi_down_l, module_2.iso_spi_up_l];
     wire black 0.25 [module_2.iso_spi_down_h, module_3.iso_spi_up_h];
@@ -98,7 +98,7 @@ component RearBattery {
     // Safe power feeds coil high side of all 3 contactors
     // BMS low-side drivers control coil ground
 
-    wire red 1.0 [safe_pwr, c_pos.coil_p, c_neg.coil_p, precharge.safe_pwr];
+    wire red   1.0 [safe_pwr,     c_pos.coil_p, c_neg.coil_p, precharge.safe_pwr];
     wire black 1.0 [bms.cont_1_n, c_pos.coil_n];
     wire black 1.0 [bms.cont_2_n, c_neg.coil_n];
     wire black 1.0 [bms.cont_3_n, precharge.coil_n];
@@ -107,12 +107,12 @@ component RearBattery {
     // Same twisted-pair colors as the vehicle bus it joins.
 
     wire white/blue 0.5 [can_h, bms.can_h];
-    wire white/red 0.5 [can_l, bms.can_l];
+    wire white/red  0.5 [can_l, bms.can_l];
 
     // --- 12V power ---
 
-    wire red 2.5 [b_pos, bms.b_pos];
-    wire black 2.5 [gnd, bms.gnd];
+    wire red   2.5 [b_pos, bms.b_pos];
+    wire black 2.5 [gnd,   bms.gnd];
 
     // --- Interlock pass-through ---
 
@@ -131,10 +131,10 @@ view schematic "Rear Battery" {
         hv_pos at (west, 2);
         hv_neg at (east, 2);
 
-        b_pos  at (42, south);
-        gnd    at (44, south);
-        can_h  at (46, south);
-        can_l  at (48, south);
+        b_pos at (42, south);
+        gnd   at (44, south);
+        can_h at (46, south);
+        can_l at (48, south);
 
         interlock_in  at (east, 8);
         interlock_out at (east, 12);
