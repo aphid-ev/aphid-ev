@@ -6,7 +6,7 @@
 # and `just build` works from inside `ecus/vcm/`.
 
 # Tool versions CI installs. Bump here to adopt a newer release.
-aphid_version := 'v0.5.1'
+aphid_version := 'v0.6.0'
 wirebug_version := 'v0.2.0'
 # The hoster release running on hoster.lhelge.se, for `hoster stack check`.
 hoster_version := 'v0.11.0'
