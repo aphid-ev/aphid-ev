@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block page_title %}Wiki — {{ site_title }}{% endblock page_title %}
+{% block nav_wiki %} class="active"{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <header style="margin-bottom: var(--sp-6)">
+    <div class="hero-eyebrow" style="display:inline-flex">The wiki</div>
+    <h1 class="article-h1">
+      Canonical reference for every subsystem.
+    </h1>
+    {% if wiki_intro %}
+    <div class="wiki-intro">{{ wiki_intro.content | safe }}</div>
+    {% endif %}
+  </header>
+
+  <div class="wiki-category-grid">
+    {% for cat in categories %}
+    <div class="wiki-category-card">
+      {% if cat.icon %}
+      <span class="wiki-category-icon"
+        style="-webkit-mask-image: url('{{ cat.icon }}'); mask-image: url('{{ cat.icon }}');" aria-hidden="true"></span>
+      {% endif %}
+      <div class="wiki-category-card-body">
+        <h3>{{ cat.name }}</h3>
+        {% if cat.description %}<p>{{ cat.description }}</p>{% endif %}
+        <ul class="wiki-category-pages">
+          {% for p in cat.pages %}
+          <li><a href="{{ p.url }}">{{ p.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock content %}
