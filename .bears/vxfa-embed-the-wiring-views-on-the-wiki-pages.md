@@ -1,10 +1,10 @@
 ---
 id: vxfa
 title: Embed the wiring views on the wiki pages
-status: review
+status: done
 priority: P2
 created: "2026-11-21T23:10:26.986915749Z"
-updated: "2026-11-21T23:15:21.040540033Z"
+updated: "2026-11-21T23:24:46.630945828Z"
 tags:
   - site
   - wiring

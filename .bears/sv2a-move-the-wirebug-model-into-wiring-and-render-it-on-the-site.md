@@ -1,10 +1,10 @@
 ---
 id: sv2a
 title: Move the wirebug model into wiring/ and render it on the site
-status: review
+status: done
 priority: P2
 created: "2026-11-21T12:51:14.851053117Z"
-updated: "2026-11-21T22:30:22.297735433Z"
+updated: "2026-11-21T23:24:46.610726180Z"
 tags:
   - wiring
   - site
