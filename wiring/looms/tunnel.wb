@@ -22,3 +22,18 @@ extend Vehicle {
         wire black 6.0 "GND"   [front.gnd,           rear.gnd];
     }
 }
+
+// --- View: battery signal harness ---
+// The interlock loop through the battery packs: MSD → front pack, the
+// tunnel cable front → rear, then rear pack → junction box. The VCM's 12V
+// connector shows the front pack's ground lead.
+
+view harness "Battery signal harness" {
+    grid: 20;
+
+    include msd.intlk         at (0, 0);
+    include vcm.lv            at (0, 10);
+    include front.bms_signals at (30, 4);
+    include rear.bms_signals  at (70, 4);
+    include hvjb.intlk        at (100, 4);
+}

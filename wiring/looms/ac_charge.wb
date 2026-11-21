@@ -56,3 +56,16 @@ view schematic "Charging control" {
         north: dcdc_en;
     }
 }
+
+// --- View: charge signal harness ---
+// The pilot and enable leads: CP from the inlet to the OBC signal
+// connector, PP from the inlet to the VCM, and the VCM's DC/DC enable to the
+// OBC.
+
+view harness "Charge signal harness" {
+    grid: 20;
+
+    include ac_inlet.x1 at (0, 0);
+    include vcm.charge  at (0, 12);
+    include charger.sig at (40, 4);
+}
