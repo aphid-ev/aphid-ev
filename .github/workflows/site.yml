@@ -3,8 +3,13 @@ name: Site
 # Builds the documentation site with its generated artifacts: wiring diagrams
 # from wiring/ and schematics from every ecus/*/hardware. A change that only
 # touches site/ restores the schematic exports from cache and never starts
-# KiCad. Deployment is not wired up yet; the built site is uploaded as an
-# artifact.
+# KiCad.
+#
+# On main, the built site is packed into an aphid-server image (site/Dockerfile),
+# pushed to ghcr.io/aphid-ev/site and deployed by digest to hoster with
+# hoster's deploy action, authenticated by OIDC with no secret. The stack file
+# is site/hoster/bladlus.stack.toml; see
+# https://docs.hoster.lhelge.se/wiki/deploying-from-ci/.
 on:
   push:
     branches: [main]
@@ -20,18 +25,26 @@ on:
       - .github/workflows/site.yml
   pull_request:
     paths: *paths
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  IMAGE: ghcr.io/aphid-ev/site
+  STACK: bladlus
+  SERVICE: web
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    outputs:
+      aphid-server-version: ${{ steps.version.outputs.aphid_server }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -44,8 +57,11 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          tools: aphid wirebug
+          tools: aphid wirebug hoster
           kicad: ${{ steps.hardware.outputs.cache-hit != 'true' }}
+
+      - name: Check stack file
+        run: just site check-stack
 
       - name: Export schematics
         if: steps.hardware.outputs.cache-hit != 'true'
@@ -57,8 +73,74 @@ jobs:
       - name: Build site
         run: just site build
 
+      - name: Determine aphid-server version
+        id: version
+        run: echo "aphid_server=$(just aphid-server-version)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: site
           path: site/dist
           if-no-files-found: error
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Limited to main in the repository settings; the stack's [deploy] rule
+    # requires this environment claim.
+    environment:
+      name: production
+      url: https://bladlus.se
+    concurrency:
+      group: site-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write   # push to ghcr with GITHUB_TOKEN
+      id-token: write   # request an OIDC token for hoster
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: site/dist
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+
+      # site/Dockerfile only copies files onto a multi-arch base image, so both
+      # platforms build without emulation.
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: site
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: APHID_SERVER_VERSION=${{ needs.build.outputs.aphid-server-version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy to hoster
+        uses: LHelge/hoster/actions/deploy@7d6db160ba883f1377136d443310fa7d14ee25f8 # v0.11.0
+        with:
+          url: https://hoster.lhelge.se
+          stack: ${{ env.STACK }}
+          images: |
+            ${{ env.SERVICE }}=${{ steps.push.outputs.digest }}
+          wait: true

@@ -1,9 +1,13 @@
 # Documentation site. Recipes run in site/.
 
-# Render the site into site/dist
+# Render the site into site/dist, with .br/.gz siblings for aphid-server
 build:
-    aphid build
+    aphid build --precompress
 
 # Serve with live reload
 serve:
     aphid serve
+
+# Check the hoster stack file against the release hoster.lhelge.se runs
+check-stack:
+    hoster stack check --deny-warnings hoster/bladlus.stack.toml
