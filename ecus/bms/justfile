@@ -1,0 +1,10 @@
+# Battery management system. One firmware (master); the hardware recipes cover
+# both the master and the slave board under ./hardware.
+
+ecu := 'bms'
+
+import '../firmware.just'
+import '../hardware.just'
+
+# Everything CI runs for this unit
+ci: ci-firmware ci-hardware

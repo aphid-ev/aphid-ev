@@ -1,0 +1,19 @@
+# Rust
+target/
+
+# Site and generated artifacts (rebuilt by `just docs` and by CI)
+/site/dist/
+/site/static/generated/
+/wiring/out/
+
+# KiCad
+*-backups/
+_autosave-*
+*.kicad_prl
+*.lck
+*-bak
+fp-info-cache
+\#auto_saved_files\#
+
+# Editors and OS
+.DS_Store

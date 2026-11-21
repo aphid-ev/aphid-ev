@@ -1,0 +1,27 @@
+name: BMS
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - ecus/bms/**
+      - ecus/*.just
+      - crates/**
+      - justfile
+      - rust-toolchain.toml
+      - .github/actions/**
+      - .github/scripts/**
+      - .github/workflows/ecu.yml
+      - .github/workflows/bms.yml
+  pull_request:
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ecu:
+    uses: ./.github/workflows/ecu.yml
+    with:
+      component: bms

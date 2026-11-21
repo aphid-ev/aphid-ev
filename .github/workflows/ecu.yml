@@ -1,0 +1,50 @@
+# Reusable checks for one unit under ecus/. Called by the per-unit workflows,
+# which own the path filters. All work is done by the unit's just recipes.
+name: ECU
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: just module name of the unit (its directory under ecus/)
+        required: true
+        type: string
+      workspace:
+        description: Path of the firmware's cargo workspace, for the build cache
+        required: false
+        type: string
+        default: ''
+      hardware:
+        description: Run the KiCad checks
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  firmware:
+    name: Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: ${{ inputs.workspace || format('ecus/{0}/firmware', inputs.component) }}
+      - run: just ${{ inputs.component }} ci-firmware
+
+  hardware:
+    name: Hardware
+    if: inputs.hardware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+        with:
+          kicad: true
+      - run: just ${{ inputs.component }} ci-hardware

@@ -1,0 +1,46 @@
+# git-cliff configuration (https://git-cliff.org): release notes from Conventional Commits.
+#
+# Components are released separately, so notes are generated per component:
+# `just changelog <component>` selects the commits by the paths they touch and
+# the releases by the component's tag prefix. Scopes are not used for the
+# selection, which is why a commit spanning several components appears in the
+# notes of each. There is no CHANGELOG.md.
+
+[changelog]
+header = ""
+body = """
+{% if commits | length == 0 %}No changes.{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}\
+{% if commit.breaking %}[**breaking**] {% endif %}\
+{{ commit.message | split(pat="\n") | first | trim | upper_first }} ({{ commit.id | truncate(length=7, end="") }})\
+{% if commit.breaking and commit.breaking_description != commit.message %} \
+{{ commit.breaking_description | trim | upper_first }}\
+{% endif %}\
+{% endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+# Commits that don't follow Conventional Commits still show up, under "Other".
+filter_unconventional = false
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+# The tag pattern is passed per component by `just changelog`.
+topo_order = false
+sort_commits = "oldest"
+# The HTML comments order the groups; `striptags` removes them from the headings.
+commit_parsers = [
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Performance" },
+  { message = "^docs", group = "<!-- 3 -->Documentation" },
+  { message = ".*", group = "<!-- 4 -->Other" },
+]

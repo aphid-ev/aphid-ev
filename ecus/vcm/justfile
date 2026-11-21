@@ -1,0 +1,9 @@
+# Vehicle control module.
+
+ecu := 'vcm'
+
+import '../firmware.just'
+import '../hardware.just'
+
+# Everything CI runs for this unit
+ci: ci-firmware ci-hardware

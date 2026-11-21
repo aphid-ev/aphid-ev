@@ -1,0 +1,10 @@
+# CAN/USB interface. The host library in ./host is part of the host workspace
+# and is covered by `just host ci`.
+
+ecu := 'can-usb'
+
+import '../firmware.just'
+import '../hardware.just'
+
+# Everything CI runs for this unit
+ci: ci-firmware ci-hardware

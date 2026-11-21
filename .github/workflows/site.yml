@@ -1,0 +1,64 @@
+name: Site
+
+# Builds the documentation site with its generated artifacts: wiring diagrams
+# from wiring/ and schematics from every ecus/*/hardware. A change that only
+# touches site/ restores the schematic exports from cache and never starts
+# KiCad. Deployment is not wired up yet; the built site is uploaded as an
+# artifact.
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - site/**
+      - wiring/**
+      - ecus/*/hardware/**
+      - ecus/hardware.just
+      - ecus/*/justfile
+      - justfile
+      - .github/actions/**
+      - .github/scripts/**
+      - .github/workflows/site.yml
+  pull_request:
+    paths: *paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Restore schematic exports
+        id: hardware
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: site/static/generated/hardware
+          key: hardware-export-${{ hashFiles('ecus/*/hardware/**', 'ecus/hardware.just', '.github/scripts/kicad-cli') }}
+
+      - uses: ./.github/actions/setup
+        with:
+          tools: aphid wirebug
+          kicad: ${{ steps.hardware.outputs.cache-hit != 'true' }}
+
+      - name: Export schematics
+        if: steps.hardware.outputs.cache-hit != 'true'
+        run: just hardware-export
+
+      - name: Check and render wiring
+        run: just wiring::check wiring::render
+
+      - name: Build site
+        run: just site build
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: site/dist
+          if-no-files-found: error

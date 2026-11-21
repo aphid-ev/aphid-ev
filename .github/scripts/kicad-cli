@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# kicad-cli for CI: runs the official KiCad container on the checked-out
+# repository, so the just recipes are the same as on a machine with KiCad
+# installed. Put on PATH by .github/actions/setup.
+set -euo pipefail
+exec docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    --env HOME=/tmp \
+    --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" \
+    --volume /tmp:/tmp \
+    --workdir "$PWD" \
+    kicad/kicad:10.0 kicad-cli "$@"

@@ -1,0 +1,21 @@
+# Host workspace: everything that builds for the desktop, plus the shared
+# no_std crates so their tests run on the host. Firmware crates are separate
+# workspaces (own target, profiles and lock file) and use crates/ by path.
+[workspace]
+resolver = "3"
+members = [
+    "crates/*",
+    "apps/*",
+    "tools/*",
+    # Add once the crate exists: "ecus/can-usb/host",
+]
+exclude = [
+    "ecus/can-usb/firmware",
+    "ecus/vcm/firmware",
+    "ecus/bms/firmware",
+    "ecus/bootloader",
+]
+
+[workspace.package]
+edition = "2024"
+repository = "https://github.com/aphid-ev/aphid-ev"

@@ -1,0 +1,40 @@
+name: Setup
+description: >-
+  Install just and, on request, the documentation tools. Tool versions are
+  pinned in the root justfile; only the just version is pinned here. The Rust
+  toolchain comes from rust-toolchain.toml through the runner's rustup.
+
+inputs:
+  tools:
+    description: Space-separated tools to install with `just install-<tool>` (aphid, wirebug)
+    required: false
+    default: ''
+  kicad:
+    description: Put a kicad-cli on PATH that runs in the official KiCad container
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: taiki-e/install-action@25f51f6b1bf4e18876107cece836f4f77ac17c8c # v2.90.7
+      with:
+        tool: just@1.59.0
+
+    - name: Install tools
+      if: inputs.tools != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        for tool in ${{ inputs.tools }}; do
+          just "install-$tool"
+        done
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+    - name: Set up kicad-cli
+      if: inputs.kicad == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker pull --quiet kicad/kicad:10.0
+        echo "$GITHUB_WORKSPACE/.github/scripts" >> "$GITHUB_PATH"

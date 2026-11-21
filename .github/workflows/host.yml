@@ -1,0 +1,41 @@
+name: Host
+
+# The host workspace: shared crates, the CAN/USB host library, the desktop app
+# and build tools.
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - crates/**
+      - apps/**
+      - tools/**
+      - ecus/can-usb/host/**
+      - Cargo.toml
+      - Cargo.lock
+      - host.just
+      - justfile
+      - rust-toolchain.toml
+      - .github/actions/**
+      - .github/workflows/host.yml
+  pull_request:
+    paths: *paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: Check & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - run: just host ci

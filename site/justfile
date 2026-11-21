@@ -1,0 +1,9 @@
+# Documentation site. Recipes run in site/.
+
+# Render the site into site/dist
+build:
+    aphid build
+
+# Serve with live reload
+serve:
+    aphid serve

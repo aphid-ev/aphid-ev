@@ -1,0 +1,28 @@
+# ECU bootloader. A standalone cargo workspace in this directory, built once
+# per MCU family: the family is a cargo feature and decides the target.
+
+# Space-separated `feature:target` pairs to build, one per MCU family,
+# for example 'stm32f4:thumbv7em-none-eabihf'.
+families := ''
+
+# Build the bootloader for one family
+build feature target:
+    cargo build --release --no-default-features --features {{ feature }} --target {{ target }}
+
+# Lint the bootloader for one family
+check feature target:
+    cargo clippy --release --no-default-features --features {{ feature }} --target {{ target }} -- -D warnings
+
+# Format check, then lint and build every family
+ci-firmware:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo fmt --all --check
+    for pair in {{ families }}; do
+        feature="${pair%%:*}" target="${pair##*:}"
+        cargo clippy --release --no-default-features --features "$feature" --target "$target" -- -D warnings
+        cargo build --release --no-default-features --features "$feature" --target "$target"
+    done
+
+# Everything CI runs for the bootloader
+ci: ci-firmware

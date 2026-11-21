@@ -1,0 +1,19 @@
+# Vehicle wiring model. Recipes run in wiring/.
+
+generated := source_directory() / '../site/static/generated/wiring'
+
+# Parse and validate the project, treating warnings as errors
+check:
+    wirebug check . --strict
+
+# Render embeddable SVGs for the site
+render:
+    wirebug render . --out {{ generated }} --embed --strict
+
+# Export every view into a single A4 PDF
+pdf:
+    wirebug render . --out out --pdf --strict
+
+# Serve with live reload
+serve:
+    wirebug serve .
