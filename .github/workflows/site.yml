@@ -1,10 +1,9 @@
 name: Site
 
-# Builds the documentation site with the schematics it embeds from every
-# ecus/*/hardware. A change that only touches site/ restores the schematic
-# exports from cache and never starts KiCad. Wiring diagrams are not rendered
-# until the wirebug model is in wiring/; see the Bears task for adding the step
-# back.
+# Builds the documentation site with its generated artifacts: wiring diagrams
+# from wiring/ and schematics from every ecus/*/hardware. A change that only
+# touches site/ restores the schematic exports from cache and never starts
+# KiCad.
 #
 # On main, the built site is packed into an aphid-server image (site/Dockerfile),
 # pushed to ghcr.io/aphid-ev/site and deployed by digest to hoster with
@@ -67,6 +66,9 @@ jobs:
       - name: Export schematics
         if: steps.hardware.outputs.cache-hit != 'true'
         run: just hardware-export
+
+      - name: Check and render wiring
+        run: just wiring::check wiring::render
 
       - name: Build site
         run: just site build
