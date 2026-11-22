@@ -1,0 +1,13 @@
+[package]
+name = "vcm-core"
+version = "0.1.0"
+description = "Vehicle control logic shared by the VCM's main and monitor MCUs"
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+ev-can = { path = "../ev-can" }
+serde = { version = "1.0.229", features = ["derive"], default-features = false }
+
+[dev-dependencies]
+postcard = { version = "1.2.0", features = ["alloc"] }

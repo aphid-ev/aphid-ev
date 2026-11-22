@@ -1,0 +1,14 @@
+---
+id: 3sdv
+title: Cross-check requested torque against the throttle in the monitor
+status: open
+priority: P2
+created: "2026-11-22T10:19:37.884443830Z"
+updated: "2026-11-22T10:19:37.884443830Z"
+tags:
+  - vcm
+  - crates
+  - safety
+---
+
+`vcm_core::monitor::TorqueMonitor` only checks that torque requests keep arriving. Compare each request with the monitor's own throttle reading and flag requests the pedal does not justify. Needs the torque scale (the wiki's `ev-can` page has it as TBD).
