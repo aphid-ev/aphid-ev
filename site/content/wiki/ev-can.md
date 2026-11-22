@@ -65,17 +65,18 @@ CAN frame stored in the 8th byte. It is a standard CRC8 calculation with
 the initial value `0x00` and the polynomial `0x85`.
 
 ```rust
-fn nissan_crc<const N: usize>(data: &[u8; N]) -> u8 {
+fn nissan_crc(data: &[u8]) -> u8 {
     const POLYNOMIAL: u8 = 0x85;
-    let mut crc = 0;
+    let mut crc = 0u8;
 
-    for b in data {
-        for i in (0..8).rev() {
-            crc <<= 1;
-            crc = if (b & (1 << i)) != 0 { crc | 0x01 } else { crc & 0xFE };
-            if crc & 0x80 != 0 {
-                crc ^= POLYNOMIAL;
-            }
+    for &byte in data {
+        crc ^= byte;
+        for _ in 0..8 {
+            crc = if crc & 0x80 != 0 {
+                (crc << 1) ^ POLYNOMIAL
+            } else {
+                crc << 1
+            };
         }
     }
 
@@ -83,10 +84,23 @@ fn nissan_crc<const N: usize>(data: &[u8; N]) -> u8 {
 }
 ```
 
+Over `6E 6E 00 04 03 06 E0` it gives `0x69`. That frame and its CRC come
+from dalathegreat's
+[Battery-Emulator](https://github.com/dalathegreat/Battery-Emulator),
+which talks to real Leaf hardware. The implementation is in
+[`crates/ev-can`](https://github.com/aphid-ev/aphid-ev/tree/main/crates/ev-can), tested against that frame and
+four others.
+
 # Messages
 
 Here are the messages seen on the EV-CAN network. For more ECU-specific
 information see the [[inverter|traction inverter]] page.
+
+`crates/ev-can` encodes these messages. It also defines `0x11A` and
+`0x50B`, two keep-alives from the VCM, and `0x55A`, the inverter and motor
+temperatures, taken from the first VCM prototype. None of the three has
+been checked against a real inverter. Bytes marked `???` below are encoded
+as the prototype had them and are unverified too.
 
 ## `0x1D4` — Torque request
 
@@ -104,7 +118,7 @@ information see the [[inverter|traction inverter]] page.
 **Torque:** signed `i16`. Positive → accelerate, negative → regen. Scale
 *TBD* Nm/bit.
 
-**Sequence counter:** loops `0 → 3`.
+**Sequence counter:** loops `0 → 3`, in bits 7-6 of byte 4.
 
 **CRC:** see above.
 

@@ -29,9 +29,11 @@ switch, is valid. The [[bms|BMS]] controllers switch the low side of the
 same coils. A contactor closes only when both the monitor and the BMS
 allow it, as described under [[contactors#coil-control]].
 
-The firmware is written in Rust and can be found in the vehicle
-controller monorepo at
-[GitHub](https://github.com/aphid-ev/vehicle-controller/tree/main/firmware/monitor-app).
+The firmware is written in Rust. The binary is in
+[`ecus/vcm/firmware/monitor`](https://github.com/aphid-ev/aphid-ev/tree/main/ecus/vcm/firmware/monitor), and the
+checks it runs are in [`crates/vcm-core`](https://github.com/aphid-ev/aphid-ev/tree/main/crates/vcm-core). So far
+the binary only starts up; the throttle and torque request checks exist
+in the crate but are not wired to the hardware.
 
 # States
 
