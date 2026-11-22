@@ -1,0 +1,80 @@
+(version 1)
+
+# Conservative 4-layer limits that any mainstream prototype fab can make at its
+# standard price: at least 0.025 mm above the stricter of JLCPCB's and PCBWay's
+# published minimums for FR-4, 1.6 mm, 1 oz outer / 0.5 oz inner copper.
+# Sources (checked 2026-11):
+#   https://jlcpcb.com/capabilities/pcb-capabilities
+#   https://www.pcbway.com/capabilities.html
+#
+# The default for 4-layer boards in the repo: each project links
+# <project>.kicad_dru to this file, or to jlcpcb-4layer.kicad_dru for a board
+# that needs JLCPCB's tighter limits. Edit this file directly rather than through
+# Board Setup, which may replace the link with a copy. Later rules take
+# precedence over earlier ones.
+
+# Copper. PCBWay's normal process asks for 5 mil tracks and 6 mil spacing.
+(rule "Track width"
+	(constraint track_width (min 0.15mm)))
+
+(rule "Copper clearance"
+	(constraint clearance (min 0.15mm)))
+
+(rule "Pad to pad"
+	(condition "A.Type == 'Pad' && B.Type == 'Pad'")
+	(constraint clearance (min 0.2mm)))
+
+(rule "Copper to board edge"
+	(constraint edge_clearance (min 0.3mm)))
+
+# Edge-mount connectors put their pads at the edge on purpose. 0.2 mm is
+# JLCPCB's minimum and PCBWay's medium-difficulty limit.
+(rule "Edge-mount connector pads"
+	(condition "A.Library_Link == '*EdgeMount*'")
+	(constraint edge_clearance (min 0.2mm)))
+
+# Vias. A 0.3 mm hole has no surcharge at JLCPCB; PCBWay's standard annular
+# ring is 0.15 mm.
+(rule "Via size"
+	(condition "A.Type == 'Via'")
+	(constraint hole_size (min 0.3mm))
+	(constraint annular_width (min 0.15mm))
+	(constraint via_diameter (min 0.6mm)))
+
+(rule "Via hole to copper"
+	(condition "A.Type == 'Via'")
+	(constraint hole_clearance (min 0.25mm)))
+
+(rule "Via hole to via hole"
+	(condition "A.Type == 'Via' && B.Type == 'Via'")
+	(constraint hole_to_hole (min 0.3mm)))
+
+# Zones. A fine-pitch SMD pad often has room for only one thermal spoke
+# between its neighbours, and SMD pads need no more to solder well. Through-hole
+# pads keep Board Setup's minimum.
+(rule "SMD pad thermal spokes"
+	(condition "A.Type == 'Pad' && A.Pad_Type == 'SMD'")
+	(constraint min_resolved_spokes 1))
+
+# Holes in pads
+(rule "Plated hole"
+	(condition "A.Type == 'Pad' && A.isPlated()")
+	(constraint hole_size (min 0.3mm))
+	(constraint annular_width (min 0.2mm))
+	(constraint hole_clearance (min 0.35mm)))
+
+(rule "Unplated hole"
+	(condition "A.Type == 'Pad' && !A.isPlated()")
+	(constraint hole_size (min 0.5mm))
+	(constraint hole_clearance (min 0.25mm)))
+
+(rule "Pad hole to pad hole"
+	(condition "A.Type == 'Pad' && B.Type == 'Pad'")
+	(constraint hole_to_hole (min 0.5mm)))
+
+# Silkscreen. Fabs drop or clip lines below this, so it is a warning.
+(rule "Silkscreen text"
+	(severity warning)
+	(layer "?.Silkscreen")
+	(constraint text_height (min 1.0mm))
+	(constraint text_thickness (min 0.15mm)))

@@ -1,0 +1,72 @@
+(version 1)
+
+# JLCPCB manufacturing limits for 4-layer FR-4, 1 oz outer / 0.5 oz inner copper.
+# Source: https://jlcpcb.com/capabilities/pcb-capabilities (checked 2026-11).
+#
+# For boards that only go to JLCPCB and need its tighter limits; the default
+# is pcb-4layer.kicad_dru. A project links <project>.kicad_dru to this file.
+# Edit this file directly rather than through Board Setup, which may replace
+# the link with a copy. Later rules take precedence over earlier ones.
+
+# Copper
+(rule "JLC: track width"
+	(constraint track_width (min 0.09mm)))
+
+(rule "JLC: copper clearance"
+	(constraint clearance (min 0.09mm)))
+
+(rule "JLC: pad to track"
+	(condition "A.Type == 'Pad' && B.Type == 'Track'")
+	(constraint clearance (min 0.1mm)))
+
+(rule "JLC: pad to pad"
+	(condition "A.Type == 'Pad' && B.Type == 'Pad'")
+	(constraint clearance (min 0.15mm)))
+
+(rule "JLC: copper to board edge"
+	(constraint edge_clearance (min 0.2mm)))
+
+# Vias
+(rule "JLC: via size"
+	(condition "A.Type == 'Via'")
+	(constraint hole_size (min 0.15mm))
+	(constraint via_diameter (min 0.25mm))
+	(constraint annular_width (min 0.05mm)))
+
+(rule "JLC: via hole to copper"
+	(condition "A.Type == 'Via'")
+	(constraint hole_clearance (min 0.2mm)))
+
+(rule "JLC: via hole to via hole"
+	(condition "A.Type == 'Via' && B.Type == 'Via'")
+	(constraint hole_to_hole (min 0.2mm)))
+
+# Zones. A fine-pitch SMD pad often has room for only one thermal spoke
+# between its neighbours, and SMD pads need no more to solder well. Through-hole
+# pads keep Board Setup's minimum.
+(rule "JLC: SMD pad thermal spokes"
+	(condition "A.Type == 'Pad' && A.Pad_Type == 'SMD'")
+	(constraint min_resolved_spokes 1))
+
+# Holes in pads
+(rule "JLC: plated hole"
+	(condition "A.Type == 'Pad' && A.isPlated()")
+	(constraint hole_size (min 0.15mm))
+	(constraint annular_width (min 0.15mm))
+	(constraint hole_clearance (min 0.28mm)))
+
+(rule "JLC: unplated hole"
+	(condition "A.Type == 'Pad' && !A.isPlated()")
+	(constraint hole_size (min 0.5mm))
+	(constraint hole_clearance (min 0.2mm)))
+
+(rule "JLC: pad hole to pad hole"
+	(condition "A.Type == 'Pad' && B.Type == 'Pad'")
+	(constraint hole_to_hole (min 0.45mm)))
+
+# Silkscreen. JLC drops lines thinner than this, so it is a warning.
+(rule "JLC: silkscreen text"
+	(severity warning)
+	(layer "?.Silkscreen")
+	(constraint text_height (min 1.0mm))
+	(constraint text_thickness (min 0.15mm)))
