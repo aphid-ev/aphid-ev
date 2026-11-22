@@ -17,9 +17,12 @@ independent supervision. The VCM handles driver inputs, torque requests,
 inverter and charger communication, contactor power authorization, cooling,
 and brake-light control.
 
-The easiest way to follow development is through the
-[vehicle-controller](https://github.com/aphid-ev/vehicle-controller)
-GitHub repository, which contains both the hardware and the firmware.
+The hardware and firmware are in the
+[aphid-ev](https://github.com/aphid-ev/aphid-ev) repository. The board is
+in [`ecus/vcm/hardware`](https://github.com/aphid-ev/aphid-ev/tree/main/ecus/vcm/hardware), the firmware for both
+microcontrollers in [`ecus/vcm/firmware`](https://github.com/aphid-ev/aphid-ev/tree/main/ecus/vcm/firmware), and the
+logic they share in [`crates/vcm-core`](https://github.com/aphid-ev/aphid-ev/tree/main/crates/vcm-core) and
+[`crates/ev-can`](https://github.com/aphid-ev/aphid-ev/tree/main/crates/ev-can).
 
 See also: [[VCM requirements]] for the design targets.
 
@@ -98,7 +101,7 @@ Molex MX-150 connectors.
 
 ## Microcontrollers
 
-The main firmware runs on an STM32F405RB microcontroller, with a smaller
+The main firmware runs on an STM32F405RG microcontroller, with a smaller
 STM32F091CC monitoring it.
 
 ## I/O {#io}
@@ -213,6 +216,9 @@ microcontrollers so they can be updated without opening the enclosure.
 One option is to use the built-in ROM bootloader in the STM32 parts —
 they are wired so that the ROM bootloader CAN bus is on CAN1 and CAN2
 respectively.
+
+The [[bootloader|CAN bootloader]] the other DIY ECUs use does not support
+the STM32F405 or the STM32F091 yet.
 
 ## Monitor application
 
