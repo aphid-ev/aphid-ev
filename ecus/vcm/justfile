@@ -1,9 +1,33 @@
-# Vehicle control module.
+# Vehicle control module. Two MCUs, each a standalone cargo workspace under
+# ./firmware with its own target and probe-rs runner: `main` (STM32F405) and
+# `monitor` (STM32F091). The shared firmware.just assumes one workspace, so
+# the firmware recipes are defined here.
 
 ecu := 'vcm'
+mcus := 'main monitor'
 
-import '../firmware.just'
 import '../hardware.just'
+
+# Build release firmware for both MCUs
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for mcu in {{ mcus }}; do (cd "firmware/$mcu" && cargo build --release); done
+
+# Check formatting and lints for both MCUs
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for mcu in {{ mcus }}; do
+        (cd "firmware/$mcu" && cargo fmt --all --check && cargo clippy --release -- -D warnings)
+    done
+
+# Flash and run one MCU's firmware through probe-rs (main or monitor)
+flash mcu:
+    cd firmware/{{ mcu }} && cargo run --release
+
+# What CI runs for the firmware
+ci-firmware: check build
 
 # Everything CI runs for this unit
 ci: ci-firmware ci-hardware
