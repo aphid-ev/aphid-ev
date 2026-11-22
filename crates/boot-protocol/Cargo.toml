@@ -1,0 +1,9 @@
+[package]
+name = "boot-protocol"
+version = "0.1.0"
+description = "CAN protocol between the ECU bootloader and the programming device"
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+crc = "3.4.0"
