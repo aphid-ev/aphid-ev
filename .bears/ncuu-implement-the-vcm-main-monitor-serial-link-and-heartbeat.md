@@ -1,0 +1,14 @@
+---
+id: ncuu
+title: Implement the VCM main/monitor serial link and heartbeat
+status: open
+priority: P2
+created: "2026-11-22T10:19:37.873426114Z"
+updated: "2026-11-22T10:19:37.873426114Z"
+tags:
+  - vcm
+  - crates
+  - safety
+---
+
+The prototype had a `MonitorSerialPort` that ended in `todo!()` and a main-app monitor that only counted down, so both were dropped. Frame `vcm_core::link` messages on the UART between the MCUs (framing, CRC, resync), add the ping/pong heartbeat with a timeout, pin the wire encoding with tests and define what each side does when the other goes silent.
