@@ -25,3 +25,6 @@ jobs:
     uses: ./.github/workflows/ecu.yml
     with:
       component: vcm
+      workspace: |
+        ecus/vcm/firmware/main
+        ecus/vcm/firmware/monitor
