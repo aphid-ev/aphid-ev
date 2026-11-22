@@ -29,10 +29,10 @@ Out of scope: board layout and firmware behaviour.
 ## Decisions
 - The direction shifter is wired to the VCM. There is no direction controller ECU.
 - CAN1 is the OEM powertrain bus (EV-CAN), CAN2 the DIY bus, as on the `ev-can` page.
+- CAN2 runs classic CAN at 500 kbit/s with standard 11-bit identifiers.
 
 ## Open questions
-- MCU per board. Four families today (G431, F405, F091, G491CC) mean four bootloader ports. Moving the VCM to G4 parts would leave one.
-- CAN2 bit rate.
+- MCU per board (`6duk.th`). The VCM monitor will be a G4. The main MCU is a G4 or an H7, and the monitor is either a separate chip or the second core of a dual-core H7.
 
 ## Safety
 The contactor sequence, precharge timing and limits, and the reaction to every fault (lost CAN2 peer, interlock open, monitor disagreement, cell limit) are written by the user. Implementers follow them; they do not choose them.
