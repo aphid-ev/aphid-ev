@@ -29,6 +29,11 @@ Applies to everything under `ecus/`. The bootloader has additional rules in
 - KiCad 10 projects. Treat `.kicad_sch` and `.kicad_pcb` as read-only: read
   them to answer questions, but layout and schematic changes are made in
   KiCad by the user. Do not hand-edit them.
+- Boards are 4-layer. Each project's `<name>.kicad_dru` is a symlink to a
+  shared rule file in `ecus/`: `pcb-4layer.kicad_dru` by default, which any
+  mainstream prototype fab can make at its standard price, or
+  `jlcpcb-4layer.kicad_dru` for a board that needs JLCPCB's tighter limits.
+  Edit the shared file, not the rules in Board Setup.
 - `just <ecu> erc` and `just <ecu> drc` run the rule checks;
   `just <ecu> export` writes schematics to `site/static/generated/hardware/`.
 - Fabrication outputs and exports are not committed.
