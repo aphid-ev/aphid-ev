@@ -6,6 +6,7 @@ resolver = "3"
 members = [
     "crates/*",
     "tools/*",
+    "ecus/can-usb/host",
     # Add "apps/*" once apps/manager has a Cargo.toml: a glob that matches a
     # directory without one stops cargo from loading the workspace.
 ]

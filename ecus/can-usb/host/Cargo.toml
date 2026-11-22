@@ -1,0 +1,17 @@
+[package]
+name = "can-usb-host"
+version = "0.1.0"
+description = "Host-side USB library and test CLI for the CAN/USB interface"
+edition.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "can-usb"
+
+[dependencies]
+can-usb-protocol = { path = "../../../crates/can-usb-protocol" }
+clap = { version = "4.6.6", features = ["derive"] }
+nusb = "0.2.7"
+postcard = { version = "1.1.3", features = ["alloc"] }
+thiserror = "2.0.20"
+tokio = { version = "1.53.1", features = ["full"] }
