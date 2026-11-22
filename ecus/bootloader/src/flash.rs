@@ -1,5 +1,5 @@
 use crate::pac::FLASH;
-use core::sync::atomic::{fence, Ordering};
+use core::sync::atomic::{Ordering, fence};
 
 const UNLOCK_KEY1: u32 = 0x45670123;
 const UNLOCK_KEY2: u32 = 0xCDEF89AB;
@@ -177,11 +177,7 @@ impl Flash {
 
         self.clear_status();
 
-        if failed {
-            Err(Error::Program)
-        } else {
-            Ok(())
-        }
+        if failed { Err(Error::Program) } else { Ok(()) }
     }
 
     /// Erases one page. `page` indexes the whole flash, and only the low

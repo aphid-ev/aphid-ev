@@ -4,9 +4,9 @@ use defmt::{error, info, unwrap, warn};
 use embassy_executor::Spawner;
 use embassy_stm32::usb::{Endpoint, In, Out};
 use embassy_stm32::{peripherals::USB, usb::Driver};
+use embassy_usb::Builder;
 use embassy_usb::driver::{Endpoint as _, EndpointAddress, EndpointIn, EndpointOut};
 use embassy_usb::msos::{self, windows_version};
-use embassy_usb::Builder;
 use static_cell::StaticCell;
 
 static CONFIG_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();

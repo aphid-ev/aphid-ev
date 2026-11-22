@@ -2,7 +2,7 @@ use crate::{RxSender, TxReceiver};
 use can_usb_protocol::{BusError, BusEvent, Frame};
 use defmt::{debug, error, unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_stm32::can::{filter, CanConfigurator, CanRx, CanTx, OperatingMode};
+use embassy_stm32::can::{CanConfigurator, CanRx, CanTx, OperatingMode, filter};
 
 pub struct CanBus {
     can_config: CanConfigurator<'static>,
