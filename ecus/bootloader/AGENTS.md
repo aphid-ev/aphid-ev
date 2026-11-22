@@ -19,3 +19,22 @@ In addition to `ecus/AGENTS.md`.
   and keep the path from reset to "stay in bootloader" as short as possible.
 - Protocol and image-validation logic belongs in the shared crate with host
   tests. This crate holds only the flash, CAN and jump code for each family.
+
+## Things to know
+
+- Exactly one chip feature must be selected. With none or both, `stm32g4`'s
+  own build script fails first with an unhelpful message, so check the
+  feature flag first when a build breaks oddly.
+- Adding a chip is a feature and a `FlashLayout`. `FlashLayout::new` asserts
+  at compile time that the page count fits the 7-bit `PNB` field: the G491
+  has no bank select bit, so its 512 KiB is 128 pages of 4 KiB.
+- The flash layout is `BOOTLOADER_SIZE` in `src/main.rs`, the `FLASH` region
+  in `memory.x` and the `ORIGIN` in each application's `memory.x`
+  (`can-echo/memory.x` among them). An application linked at `0x08000000`
+  still gets written to the application region, but its vector table points
+  into the bootloader.
+- The clock setup duplicates the ECU firmware's: 16 MHz HSE, 144 MHz
+  sysclk, 48 MHz FDCAN. The bootloader sets five flash wait states where
+  embassy computes four, which is safe but not identical.
+- The jump to the application does not de-initialise the clocks, so the
+  application's `embassy_stm32::init` starts from a configured RCC.
