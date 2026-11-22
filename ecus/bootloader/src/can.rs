@@ -1,13 +1,13 @@
-use core::num::{NonZeroU16, NonZeroU8};
+use core::num::{NonZeroU8, NonZeroU16};
 
 use crate::pac::{FDCAN, FDCAN1, GPIOB, RCC};
 use boot_protocol::{Error, Frame, Result};
 use fdcan::{
+    NormalOperationMode, ReceiveOverrun,
     config::NominalBitTiming,
     filter::{StandardFilter, StandardFilterSlot},
     frame::{FrameFormat, RxFrameInfo, TxFrameHeader},
     id::{Id, StandardId},
-    NormalOperationMode, ReceiveOverrun,
 };
 use nb::block;
 

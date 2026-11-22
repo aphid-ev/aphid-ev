@@ -6,7 +6,7 @@ mod can;
 mod flash;
 
 use app::App;
-use boot_protocol::{Block, Command, Error, Frame, NodeId, MAX_BLOCK_LEN, WAKEUP_WINDOW_MS};
+use boot_protocol::{Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, WAKEUP_WINDOW_MS};
 use can::Can;
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
@@ -160,11 +160,11 @@ fn state_wait(can: &mut Can, systick: &mut SYST) -> State {
     systick.enable_counter();
 
     loop {
-        if let Some(frame) = can.receive() {
-            if frame.is_catch(NODE_ID) {
-                systick.disable_counter();
-                return State::Bootloader;
-            }
+        if let Some(frame) = can.receive()
+            && frame.is_catch(NODE_ID)
+        {
+            systick.disable_counter();
+            return State::Bootloader;
         };
 
         if systick.has_wrapped() {
@@ -185,7 +185,7 @@ fn state_bootloader(can: &mut Can) -> State {
                 Some(Ok(Command::Start)) => return State::Application,
                 Some(Ok(Command::Erase)) => return State::Erase,
                 Some(Ok(Command::Program { offset, len, crc })) => {
-                    return State::Write { offset, len, crc }
+                    return State::Write { offset, len, crc };
                 }
                 // A command meant for us that we refuse, such as an erase
                 // carrying the wrong key.
@@ -209,13 +209,12 @@ fn state_write(
     let mut block: Block<MAX_BLOCK_LEN> = Block::new(offset, len as usize)?;
 
     loop {
-        if let Some(frame) = can.receive() {
-            if let Some(sub_block) = frame.as_block_data(NODE_ID) {
-                if block.insert(&sub_block)? {
-                    block.validate(crc)?;
-                    break;
-                }
-            }
+        if let Some(frame) = can.receive()
+            && let Some(sub_block) = frame.as_block_data(NODE_ID)
+            && block.insert(&sub_block)?
+        {
+            block.validate(crc)?;
+            break;
         }
     }
 

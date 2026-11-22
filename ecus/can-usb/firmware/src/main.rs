@@ -11,7 +11,7 @@ use embassy_executor::Spawner;
 use embassy_stm32::can::{CanConfigurator, IT0InterruptHandler, IT1InterruptHandler};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::usb::{Driver, InterruptHandler};
-use embassy_stm32::{bind_interrupts, peripherals::*, Config};
+use embassy_stm32::{Config, bind_interrupts, peripherals::*};
 use embassy_sync::priority_channel::PriorityChannel;
 use embassy_sync::{
     blocking_mutex::raw::ThreadModeRawMutex,

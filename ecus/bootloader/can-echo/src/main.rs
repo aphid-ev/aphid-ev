@@ -10,10 +10,10 @@
 
 use embassy_executor::Spawner;
 use embassy_stm32::can::{
-    filter, CanConfigurator, IT0InterruptHandler, IT1InterruptHandler, OperatingMode,
+    CanConfigurator, IT0InterruptHandler, IT1InterruptHandler, OperatingMode, filter,
 };
 use embassy_stm32::time::Hertz;
-use embassy_stm32::{bind_interrupts, peripherals::*, Config};
+use embassy_stm32::{Config, bind_interrupts, peripherals::*};
 use panic_halt as _;
 
 bind_interrupts!(struct CanIrqs {
