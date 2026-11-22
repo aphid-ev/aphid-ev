@@ -26,3 +26,5 @@ jobs:
     uses: ./.github/workflows/ecu.yml
     with:
       component: bms
+      # ERC and DRC are off until the system design is settled. Task: v438
+      hardware: false

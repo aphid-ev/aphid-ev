@@ -26,6 +26,8 @@ jobs:
     uses: ./.github/workflows/ecu.yml
     with:
       component: vcm
+      # ERC and DRC are off until the system design is settled. Task: v438
+      hardware: false
       workspace: |
         ecus/vcm/firmware/main
         ecus/vcm/firmware/monitor

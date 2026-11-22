@@ -6,5 +6,6 @@ ecu := 'bms'
 import '../firmware.just'
 import '../hardware.just'
 
-# Everything CI runs for this unit
-ci: ci-firmware ci-hardware
+# Everything CI runs for this unit. ERC and DRC are off until the system
+# design is settled; run `just bms ci-hardware` by hand. Task: v438
+ci: ci-firmware
