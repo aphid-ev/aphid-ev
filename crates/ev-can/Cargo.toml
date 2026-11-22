@@ -1,0 +1,9 @@
+[package]
+name = "ev-can"
+version = "0.1.0"
+description = "Messages on the Nissan Leaf EV-CAN bus"
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+embedded-can = "0.4.1"
