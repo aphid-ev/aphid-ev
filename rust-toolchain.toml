@@ -3,4 +3,4 @@ channel = "stable"
 components = ["rustfmt", "clippy", "llvm-tools"]
 # Add the thumbv* target of each MCU family here as firmware moves in, so
 # local builds and CI install them automatically.
-targets = []
+targets = ["thumbv7em-none-eabi"]

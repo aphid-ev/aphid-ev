@@ -1,0 +1,16 @@
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+runner = [
+    "probe-rs",
+    "run",
+    "--chip",
+    "STM32G431CB",
+    "--connect-under-reset",
+    "--log-format",
+    "{t} {L} {s}",
+]
+
+[build]
+target = "thumbv7em-none-eabi"
+
+[env]
+DEFMT_LOG = "debug"
