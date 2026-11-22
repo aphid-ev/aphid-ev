@@ -26,6 +26,11 @@ Applies to everything under `ecus/`. The bootloader has additional rules in
 
 ## Hardware
 
+- One KiCad project per board, each a complete snapshot of that board. Do
+  not share hierarchical sheets or design blocks between boards: a circuit
+  used on several boards is copied into each, so a board changes only when
+  its own files do. Symbols and footprints are shared, through the `aphid`
+  library in `ecus/libraries`, referenced by a `${KIPRJMOD}`-relative path.
 - KiCad 10 projects. Treat `.kicad_sch` and `.kicad_pcb` as read-only: read
   them to answer questions, but layout and schematic changes are made in
   KiCad by the user. Do not hand-edit them.
