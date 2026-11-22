@@ -27,7 +27,7 @@ Mostly manual: KiCad work, ordering and bench checks are the user's.
 
 ## Decisions
 - Enclosure: Cinch ModICE ME-MX 24 with Molex MX-150, as on the `vcm` page.
-- Main MCU STM32G474, monitor STM32G431 as a separate chip with its own regulator and clock, replacing the STM32F405RG and STM32F091CC in the current schematic.
+- Main MCU STM32G491 with 512 KB, monitor STM32G431 as a separate chip with its own regulator and clock, replacing the STM32F405RG and STM32F091CC in the current schematic.
 
 ## Safety
 The monitor MCU must be able to cut the contactor high-side supply on its own, whatever the main MCU does.

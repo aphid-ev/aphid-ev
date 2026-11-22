@@ -26,7 +26,7 @@ Mostly manual. The slave works on the HV pack, so its isolation and creepage get
 
 ## Decisions
 - Shunt BAS-M-R0001-R-5.0 with an AMC3306M05 isolated ADC, as on the `bms` page.
-- The master moves from the STM32G491CC to an STM32G474 with 512 KB, the same part as the VCM main MCU.
+- The master moves from the STM32G491CC to the STM32G491CE, the 512 KB part the VCM main MCU also uses.
 
 ## Safety
 Isolation between the pack and the LV side holds on every board. The master can open its contactor whatever CAN2 says.

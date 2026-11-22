@@ -32,9 +32,9 @@ PCBs mounted on the battery modules.
 
 # Microcontroller
 
-Each BMS controller runs on an STM32G474 with 512 KB of flash, the same
-part as the [[vcm]] main MCU. The current schematic still has an
-STM32G491CC.
+Each BMS controller runs on an STM32G491CE with 512 KB of flash, the same
+part as the [[vcm]] main MCU. The current schematic has the STM32G491CC,
+the 256 KB version in the same package.
 
 # Current shunt
 

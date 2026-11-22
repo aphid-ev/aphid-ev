@@ -30,10 +30,10 @@ Out of scope: board layout and firmware behaviour.
 - The direction shifter is wired to the VCM. There is no direction controller ECU.
 - CAN1 is the OEM powertrain bus (EV-CAN), CAN2 the DIY bus, as on the `ev-can` page.
 - CAN2 runs classic CAN at 500 kbit/s with standard 11-bit identifiers.
-- STM32G474 for the VCM main MCU and the BMS masters, STM32G431 for the VCM monitor and the dongle. The monitor is a separate chip.
+- STM32G491 with 512 KB for the VCM main MCU and the BMS masters, STM32G431 for the VCM monitor and the dongle. The monitor is a separate chip.
 
 ## Open questions
-- None about the MCUs: STM32G474 for the VCM main and the BMS masters, STM32G431 for the VCM monitor and the dongle, the monitor as a separate chip (`6duk.th`).
+- None about the MCUs: STM32G491 with 512 KB for the VCM main and the BMS masters, STM32G431 for the VCM monitor and the dongle, the monitor as a separate chip (`6duk.th`).
 
 ## Safety
 The contactor sequence, precharge timing and limits, and the reaction to every fault (lost CAN2 peer, interlock open, monitor disagreement, cell limit) are written by the user. Implementers follow them; they do not choose them.
