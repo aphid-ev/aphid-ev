@@ -1,5 +1,7 @@
 # ECU bootloader. A standalone cargo workspace in this directory, built once
 # per MCU family: the family is a cargo feature and decides the target.
+# ./can-echo is a second workspace: the application used to test flashing
+# over CAN, linked at the application offset.
 
 # Space-separated `feature:target` pairs to build, one per MCU family,
 # for example 'stm32f4:thumbv7em-none-eabihf'.
@@ -14,7 +16,7 @@ check feature target:
     cargo clippy --release --no-default-features --features {{ feature }} --target {{ target }} -- -D warnings
 
 # Format check, then lint and build every family
-ci-firmware:
+ci-bootloader:
     #!/usr/bin/env bash
     set -euo pipefail
     cargo fmt --all --check
@@ -23,6 +25,26 @@ ci-firmware:
         cargo clippy --release --no-default-features --features "$feature" --target "$target" -- -D warnings
         cargo build --release --no-default-features --features "$feature" --target "$target"
     done
+
+# Build the can-echo test application
+[working-directory('can-echo')]
+build-echo:
+    cargo build --release
+
+# Flash can-echo through probe-rs, at the application offset
+[working-directory('can-echo')]
+flash-echo:
+    cargo run --release
+
+# Format check, lint and build can-echo
+[working-directory('can-echo')]
+ci-echo:
+    cargo fmt --all --check
+    cargo clippy --release -- -D warnings
+    cargo build --release
+
+# The bootloader for every family, and can-echo
+ci-firmware: ci-bootloader ci-echo
 
 # Everything CI runs for the bootloader
 ci: ci-firmware

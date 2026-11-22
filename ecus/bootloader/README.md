@@ -10,9 +10,14 @@ listed in the `justfile`.
 | `stm32g431cx` | STM32G431 | 128 KiB in 2 KiB pages |
 | `stm32g491rx` | STM32G491 | 512 KiB in 4 KiB pages |
 
+`can-echo/` is a minimal application for testing a flash over CAN. It links
+at the application offset, `0x08002000`, and echoes every frame it receives,
+so a successful flash shows up on the bus. It is its own cargo workspace.
+
 ```sh
 just bootloader build <feature> <target>   # one chip
-just bootloader ci                         # fmt, lint and build every chip
+just bootloader build-echo                 # the test application
+just bootloader ci                         # fmt, lint and build all of it
 ```
 
 The update protocol is defined in
