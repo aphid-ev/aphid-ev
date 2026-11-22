@@ -16,17 +16,18 @@ depends_on:
 ---
 
 ## Goal
-The car charges from AC through the Mitsubishi OBC, with the BMS limiting current to what the cells accept, and runs its 12 V DC/DC whenever it is on.
+The car charges from AC through the Mitsubishi Outlander OBC, with the BMS limiting current to what the cells accept, and runs its 12 V DC/DC whenever it is on.
 
 ## Scope
 - The OBC and DC/DC messages on CAN1 in `crates/ev-can`.
-- Charge control in the VCM: plug and pilot detection, the request to the OBC, stopping on BMS limits or faults.
+- Charge control in the VCM: starting the charge on the proximity pilot, the inlet lock and status LEDs, the request to the OBC, stopping on BMS limits or faults.
 - Charge-current limits from the BMS over CAN2.
 - Charge status in the manager.
 - The `obc` and `ev-can` wiki pages.
 
 ## Decisions
-None yet. The charge inlet and pilot handling still have to be decided.
+- The OBC handles the control pilot and regulates charge current to what the charging point advertises. The VCM does not read CP.
+- Per the `obc` page: a Type 2 inlet, single-phase at up to 16 A. The proximity pilot, the inlet lock and the status LEDs connect to the VCM. The inlet part, the LED meanings and the lock feedback are still open.
 
 ## Safety
 Charging stops and the contactors open on any BMS limit, lost CAN peer or interlock fault, as specified in M1.
