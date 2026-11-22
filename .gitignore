@@ -8,6 +8,7 @@ target/
 
 # KiCad
 *-backups/
+.history/
 _autosave-*
 *.kicad_prl
 *.lck
