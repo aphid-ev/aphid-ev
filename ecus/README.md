@@ -13,6 +13,9 @@ Each firmware is a standalone cargo workspace: its target and probe-rs runner
 are set in `firmware/.cargo/config.toml`, and it uses the shared crates in
 [`crates/`](../crates/) by path.
 
+`libraries/` is the KiCad symbol and footprint library the boards share,
+named `aphid` in each project's library tables.
+
 `firmware.just` and `hardware.just` hold the recipes every unit shares; each
 unit's `justfile` imports the ones it needs.
 

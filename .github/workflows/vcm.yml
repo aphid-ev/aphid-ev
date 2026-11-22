@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths: &paths
       - ecus/vcm/**
+      - ecus/libraries/**
       - ecus/*.just
       - crates/**
       - justfile

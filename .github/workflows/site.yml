@@ -17,6 +17,7 @@ on:
       - site/**
       - wiring/**
       - ecus/*/hardware/**
+      - ecus/libraries/**
       - ecus/hardware.just
       - ecus/*/justfile
       - justfile
@@ -53,7 +54,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: site/static/generated/hardware
-          key: hardware-export-${{ hashFiles('ecus/*/hardware/**', 'ecus/hardware.just', '.github/scripts/kicad-cli') }}
+          key: hardware-export-${{ hashFiles('ecus/*/hardware/**', 'ecus/libraries/**', 'ecus/hardware.just', '.github/scripts/kicad-cli') }}
 
       - uses: ./.github/actions/setup
         with:
