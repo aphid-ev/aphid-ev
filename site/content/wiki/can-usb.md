@@ -25,14 +25,40 @@ flowchart LR
 ```
 
 The interface is not an ECU and has no CAN bootloader. It runs from the
-start of flash and is flashed with a debug probe or through the STM32's
-built-in USB DFU bootloader.
+start of flash and is flashed with a debug probe on the STDC14 connector.
 
 # Hardware
 
 The firmware runs on an STM32G431CB with a 16 MHz crystal. USB is on PA11
-and PA12, and FDCAN1 is on PB8 and PB9. The KiCad project is not in the
-repository yet.
+and PA12, and FDCAN1 is on PB8 and PB9. A TJA1042 transceiver connects
+FDCAN1 to the bus. The KiCad project is in `ecus/can-usb/hardware`.
+
+The interface has no bus termination. The ECUs at the ends of the bus
+terminate it, so the interface can be plugged in anywhere along it.
+
+## Option bytes {#option-bytes}
+
+PB8 is also the STM32's BOOT0 pin, and on the G431 FDCAN1 has no other
+pins: the only alternative, PA11 and PA12, is taken by USB. The transceiver
+drives RXD high while the bus is idle. With the factory option bytes the MCU
+reads that as BOOT0 high at reset and starts ST's ROM bootloader instead of
+the firmware.
+
+Set the option bytes once on each new board so the MCU ignores the pin and
+always boots from flash:
+
+| Option bit | Value | Effect |
+| --- | --- | --- |
+| `nSWBOOT0` | 0 | Take BOOT0 from the `nBOOT0` bit, not the pin |
+| `nBOOT0` | 1 | Boot from main flash |
+
+With a debug probe connected, STM32CubeProgrammer sets them:
+
+```sh
+STM32_Programmer_CLI -c port=SWD mode=UR -ob nSWBOOT0=0 nBOOT0=1
+```
+
+After this, the ROM bootloader starts only while main flash is blank.
 
 # CAN side
 
