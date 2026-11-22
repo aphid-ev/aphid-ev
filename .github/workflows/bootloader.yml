@@ -23,5 +23,7 @@ jobs:
     uses: ./.github/workflows/ecu.yml
     with:
       component: bootloader
-      workspace: ecus/bootloader
+      workspace: |
+        ecus/bootloader
+        ecus/bootloader/can-echo
       hardware: false

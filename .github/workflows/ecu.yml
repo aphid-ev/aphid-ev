@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       workspace:
-        description: Path of the firmware's cargo workspace, for the build cache
+        description: Path of the firmware's cargo workspaces, one per line, for the build cache
         required: false
         type: string
         default: ''
