@@ -1,14 +1,16 @@
 ---
-id: 635h
+id: thmn.dx
 title: Support the VCM's and BMS master's MCUs in the bootloader
 status: open
 priority: P2
 created: "2026-11-22T10:20:58.818275492Z"
-updated: "2026-11-22T10:20:58.818275492Z"
+updated: "2026-11-22T10:53:32.268009767Z"
 tags:
   - bootloader
   - vcm
   - bms
+depends_on:
+  - 6duk.th
 ---
 
 The bootloader builds for the STM32G431 and a 512 KiB STM32G491. The ECUs need:

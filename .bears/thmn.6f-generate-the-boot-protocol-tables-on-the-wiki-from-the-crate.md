@@ -1,10 +1,10 @@
 ---
-id: 9e5q
+id: thmn.6f
 title: Generate the boot protocol tables on the wiki from the crate
 status: open
 priority: P3
 created: "2026-11-22T09:23:05.912169916Z"
-updated: "2026-11-22T09:23:05.912169916Z"
+updated: "2026-11-22T10:52:54.243486265Z"
 tags:
   - site
   - crates

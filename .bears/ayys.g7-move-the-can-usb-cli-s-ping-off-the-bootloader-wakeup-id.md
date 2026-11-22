@@ -1,10 +1,10 @@
 ---
-id: w33z
+id: ayys.g7
 title: Move the can-usb CLI's ping off the bootloader wakeup ID
 status: open
 priority: P3
 created: "2026-11-22T09:13:03.308542875Z"
-updated: "2026-11-22T09:13:03.308542875Z"
+updated: "2026-11-22T10:52:54.157388507Z"
 tags:
   - can-usb
 ---

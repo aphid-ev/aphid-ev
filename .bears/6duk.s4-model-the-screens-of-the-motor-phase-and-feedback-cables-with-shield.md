@@ -1,10 +1,10 @@
 ---
-id: zqgn
+id: 6duk.s4
 title: Model the screens of the motor phase and feedback cables with `shield`
 status: open
 priority: P3
 created: "2026-11-21T22:30:30.134017117Z"
-updated: "2026-11-21T22:30:30.134017117Z"
+updated: "2026-11-22T10:52:54.140688337Z"
 tags:
   - wiring
 ---

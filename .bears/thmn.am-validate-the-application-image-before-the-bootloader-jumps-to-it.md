@@ -1,10 +1,10 @@
 ---
-id: 5qrh
+id: thmn.am
 title: Validate the application image before the bootloader jumps to it
 status: open
 priority: P1
 created: "2026-11-22T09:23:05.885427495Z"
-updated: "2026-11-22T09:23:05.885427495Z"
+updated: "2026-11-22T10:52:54.174998086Z"
 tags:
   - bootloader
   - crates
