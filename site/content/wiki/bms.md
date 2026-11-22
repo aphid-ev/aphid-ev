@@ -30,6 +30,12 @@ enclosures with Molex MX-150 connectors. This packaging convention applies
 to the enclosed DIY ECUs; it does not apply to the bare cell-monitoring
 PCBs mounted on the battery modules.
 
+# Microcontroller
+
+Each BMS controller runs on an STM32G474 with 512 KB of flash, the same
+part as the [[vcm]] main MCU. The current schematic still has an
+STM32G491CC.
+
 # Current shunt
 
 - Shunt resistor: **BAS-M-R0001-R-5.0**

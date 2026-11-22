@@ -101,8 +101,19 @@ Molex MX-150 connectors.
 
 ## Microcontrollers
 
-The main firmware runs on an STM32F405RG microcontroller, with a smaller
-STM32F091CC monitoring it.
+The main firmware runs on an STM32G474 with 512 KB of flash, with a
+separate STM32G431 monitoring it. Every DIY ECU uses the STM32G4 family,
+so one bootloader and one HAL cover the whole car. The G474's flash has two
+banks, so a firmware update can be written to the idle bank and swapped in
+only after it has been validated.
+
+The monitor is a separate chip, with its own supply and clock, rather than
+a second core on the main MCU's die. Two cores on one die share the supply,
+the clock, the reset and the CAN peripheral, so a single hardware fault
+could stop both the controller and its supervisor.
+
+The current schematic still has the earlier choice, an STM32F405RG with an
+STM32F091CC monitor.
 
 ## I/O {#io}
 
