@@ -1,7 +1,12 @@
 // Accelerator pedal
 // Dual-track APPS (accelerator pedal position sensor): two opposed
 // analog tracks so the VCM can cross-check for a stuck or shorted
-// signal, fed from the VCM's 5V sensor supply.
+// signal, fed from the VCM's 5V sensor supply. APPS1 rises from 0.5 V to
+// 4.5 V with the pedal and APPS2 falls from 4.5 V to 0.5 V.
+//
+// The sensor is either a cable-driven Piher PSC-360 in the engine
+// compartment (preferred) or an off-the-shelf pedal. Both use these four
+// signals. The connector and the loom lengths follow once that is built.
 
 component AcceleratorPedal {
     connector x1 "AMP Superseal 4p" {
