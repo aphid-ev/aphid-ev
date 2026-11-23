@@ -1,10 +1,10 @@
 ---
 id: 6duk.hj
 title: Nail down the onboard charger and DC-DC design
-status: review
+status: done
 priority: P1
 created: "2026-11-23T08:21:10.771454Z"
-updated: "2026-11-23T17:13:30.622644Z"
+updated: "2026-11-23T18:35:32.228675Z"
 tags:
   - site
   - wiring
