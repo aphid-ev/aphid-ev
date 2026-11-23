@@ -33,8 +33,8 @@ extend Vehicle {
     wire orange 50 "Pack HV-"     [msd.hv_out,   hvjb.pack_neg_in];
     wire orange 50 "Inverter HV+" [hvjb.inv_pos, inv.dc_pos];
     wire orange 50 "Inverter HV-" [hvjb.inv_neg, inv.dc_neg];
-    wire orange 50 "OBC HV+"      [hvjb.obc_pos, charger.dc_pos];
-    wire orange 50 "OBC HV-"      [hvjb.obc_neg, charger.dc_neg];
+    wire orange 6  "OBC HV+"      [hvjb.obc_pos, charger.dc_pos];
+    wire orange 6  "OBC HV-"      [hvjb.obc_neg, charger.dc_neg];
 
     // --- Motor phases ---
     // A real point-to-point cable: three conductors, inverter to motor.

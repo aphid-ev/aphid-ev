@@ -17,7 +17,7 @@ component PrimaryFuseBox {
     }
 
     // MIDI fuses, bolted between the bus bar and the output studs.
-    f_dcdc:   Fuse "MIDI 1 DC-DC";
+    f_dcdc:   Fuse "MIDI 1 DC-DC 150 A";
     f_ev:     Fuse "MIDI 2 EV box";
     f_beetle: Fuse "MIDI 3 Beetle";
 
@@ -45,7 +45,7 @@ component PrimaryFuseBox {
 
     wire red 25 [batt, f_dcdc.a, f_ev.a, f_beetle.a, f_sw.a, f_bms_front.a, f_bms_rear.a, f_interlock.a];
 
-    wire red 25  [f_dcdc.b,      dcdc];
+    wire red 35  [f_dcdc.b,      dcdc];
     wire red 10  [f_ev.b,        ev];
     wire red 10  [f_beetle.b,    beetle];
     wire red 1.0 [f_sw.b,        sw];

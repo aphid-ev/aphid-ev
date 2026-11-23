@@ -1,0 +1,22 @@
+// Charge inlet lock (BESEN BS-EL0003)
+// A 12 V motor drives a bolt into the Type 2 plug. +12 V on the red lead
+// locks, reversed polarity unlocks; the pulse is 0.2 to 1 s and never
+// longer than 3 s. The bolt stays where it is without power. The feedback
+// switch is closed while locked. The lock has a manual release and a
+// 500 mm four-wire tail; pin numbers here follow the tail's wire order.
+//
+// The lock is optional: the car charges without it.
+
+component InletLock {
+    part:         "BS-EL0003";
+    manufacturer: "BESEN";
+    description:  "Electronic lock for a Type 2 inlet, 12 V motor with feedback switch";
+    rating:       "12 V, 650 mA max";
+
+    connector x1 "Lock 4p" {
+        pub port motor_pos "MOTOR +" pin 1; // red
+        pub port motor_neg "MOTOR -" pin 2; // black
+        pub port fb_1      "FB 1"    pin 3; // white
+        pub port fb_2      "FB 2"    pin 4; // blue
+    }
+}

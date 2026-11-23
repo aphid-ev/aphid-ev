@@ -1,35 +1,50 @@
-// Combined On-Board Charger and DC-DC converter
-// Self-powered from HV bus. Charges from 1-phase AC inlet.
-// Provides 12V output to the vehicle electrical system.
+// Combined on-board charger and DC-DC converter (Mitsubishi Outlander PHEV)
+// Charges the traction battery from single-phase AC and supplies the 12 V
+// system from the HV bus. Connector codes and pin numbers follow the
+// Mitsubishi Outlander PHEV circuit diagrams (H-101, H-108, D-205, D-208);
+// the obc wiki page lists the sources.
 
 component ObcDcdc {
+    manufacturer: "Mitsubishi";
+    description:  "Outlander PHEV on-board charger and DC-DC converter";
+    rating:       "3.3 kW charger, 1.8 kW DC-DC";
+
+    // HV connector (H-108). No interlock contacts.
     connector hv "HV DC 2p" {
-        pub port dc_pos "DC+" pin 1;
-        pub port dc_neg "DC-" pin 2;
+        pub port dc_neg "DC-" pin 1;
+        pub port dc_pos "DC+" pin 2;
     }
 
-    connector ac "AC inlet 3p" {
-        pub port ac_l  "AC L"  pin 1;
-        pub port ac_n  "AC N"  pin 2;
-        pub port ac_pe "AC PE" pin 3;
+    // AC input (H-101): a 5-way housing with three cavities used. The
+    // Mitsubishi diagram names pin 1 COLD and pin 2 HOT.
+    connector ac "AC input 5p" {
+        pub port ac_n  "AC N"  pin 1;
+        pub port ac_l  "AC L"  pin 2;
+        pub port ac_pe "AC PE" pin 4;
     }
 
-    connector lv "12V output 4p" {
-        pub port out_pos "12V OUT+" pins [1, 2];
-        pub port out_neg "12V OUT-" pins [3, 4];
+    // 12 V output (D-205): a single M8 stud. The return is the case.
+    connector lv "12V output stud" {
+        pub port out_pos "12V OUT+" pin 1;
     }
 
-    // 13-pin signal connector (Sumitomo 6189-1092). Carries the CAN control
-    // bus, the DC/DC enable and its supply/sense lines, and the charge-port
-    // control pilot. Pin numbers follow the Mitsubishi wiring diagram.
-    // (openinverter.org/wiki/Mitsubishi_Outlander_DCDC_OBC)
+    // The aluminium case is the DC-DC negative: it takes a ground strap as
+    // heavy as the output cable.
+    pub port case_gnd "CASE GND";
+
+    // 13-pin signal connector (D-208, mates with Sumitomo 6189-1092).
+    // Carries the CAN control bus, the DC/DC enable and its supply and
+    // sense lines, and the control pilot from the charge inlet. Pins 1, 2,
+    // 3 and 11 are empty.
     connector sig "Signal 13p" {
-        pub port dc_sw "DC SW" pin 4; // DC/DC enable — from the VCM
+        pub port dc_sw "DC SW" pin 4; // DC/DC enable, from the VCM
+        port chin "CHIN" pin 5; // Mitsubishi remote unit, not used
         pub port can_h "CAN H" pin 6;
         pub port sense "SENSE" pin 7; // permanent +12V sense
-        pub port igct  "IGCT"  pin 8; // switched +12V main supply (HV-active)
-        pub port cp    "CP"    pin 9; // control pilot from the charge port
+        pub port igct  "IGCT"  pin 8; // switched +12V main supply
+        pub port cp    "CP"    pin 9; // control pilot from the charge inlet
         pub port gnd   "GND"   pin 10;
+        port chot "CHOT" pin 12; // Mitsubishi remote unit, not used
         pub port can_l "CAN L" pin 13;
     }
 }

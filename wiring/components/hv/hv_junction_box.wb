@@ -1,8 +1,17 @@
 // HV junction box
 // Receives the completed pack string and distributes it to the inverter and
-// OBC/DC-DC.
+// OBC/DC-DC. The OBC/DC-DC branch has its own 30 A fuse on the positive
+// leg, the rating Mitsubishi uses for the unit, so the branch can run in
+// 6 mm² cable.
 
 component HvJunctionBox {
+    component Fuse {
+        pub port a "IN";
+        pub port b "OUT";
+    }
+
+    f_obc: Fuse "OBC/DC-DC fuse 30 A";
+
     connector pack "Pack string HV 2p" {
         pub port pack_pos_in "PACK HV+" pin 1;
         pub port pack_neg_in "PACK HV-" pin 2;
@@ -23,8 +32,9 @@ component HvJunctionBox {
         pub port interlock_out "INTLK OUT" pin 2;
     }
 
-    wire orange 50 "HV+" [pack_pos_in, inv_pos, obc_pos];
-    wire orange 50 "HV-" [pack_neg_in, inv_neg, obc_neg];
+    wire orange 50 "HV+"     [pack_pos_in, inv_pos, f_obc.a];
+    wire orange 6  "OBC HV+" [f_obc.b,     obc_pos];
+    wire orange 50 "HV-"     [pack_neg_in, inv_neg, obc_neg];
 
     wire green 0.5 [interlock_in, interlock_out];
 }
