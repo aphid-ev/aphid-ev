@@ -46,8 +46,10 @@ component Vcm {
     // Exterior lighting. The stop lamps are driven high-side straight from
     // here — the VCM asserts them on a brake switch input (brake_1/brake_2)
     // or active regenerative braking, so regen alone still lights the stops.
-    connector lights "Lights 1p" {
-        pub port brake "BRAKE" pin 1;
+    // The reverse light is also high-side, on while the direction is R.
+    connector lights "Lights 2p" {
+        pub port brake   "BRAKE"   pin 1;
+        pub port reverse "REVERSE" pin 2;
     }
 
     // Ignition key inputs — the RUN and START signals from the dash key.

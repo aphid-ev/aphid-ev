@@ -158,8 +158,7 @@ connector on the way to the device.
 
 ![Schematic of the VCM with every port and a label naming what it connects to](/static/generated/wiring/vcm_i_o.svg#inline "VCM I/O")
 
-The model has 35 VCM signals. It does not yet have the reverse lights. Its
-connectors are placeholders,
+The model has 36 VCM signals. Its connectors are placeholders,
 one per function, and the interlock input, the safe power output and the EV
 relay output have no connector pin yet.
 

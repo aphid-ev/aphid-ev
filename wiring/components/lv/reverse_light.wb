@@ -1,0 +1,10 @@
+// Reverse light
+// A white reversing lamp: a switched feed from the VCM's reverse-light
+// output and a chassis ground return.
+
+component ReverseLight {
+    connector x1 "Lamp 2p" {
+        pub port rev "REVERSE" pin 1;
+        pub port gnd "GND"     pin 2;
+    }
+}
