@@ -1,56 +1,104 @@
 // Aphid EV — gear selector loom.
 //
-// The shift-by-wire gear lever hangs off the cab harness through its own
-// inline connector (a mated Deutsch DT 3-way pair) on a ~2 m loom, exactly
-// like the key branch. Three conductors cross: a fused 12 V feed in, and
-// the lever's momentary R and D requests back to the VCM. The main run
-// carries the female half; the gear loom the male.
+// The gear lever and the parking brake switch sit together on the tunnel.
+// They hang off the cab harness through one inline connector (a mated
+// Deutsch DT 6-way pair) on a ~2 m loom, like the key branch. Six
+// conductors cross: a fused 12 V feed in, the lever's four switch lines
+// and the parking brake signal back to the VCM. The main run carries the
+// female half; the gear loom the male.
 
-use GearLever from "../components/lv/gear_lever.wb";
-use Dt04_3p   from "../components/connectors.wb";
-use Dt06_3s   from "../components/connectors.wb";
+use GearLever       from "../components/lv/gear_lever.wb";
+use ParkBrakeSwitch from "../components/lv/park_brake_switch.wb";
+use Dt04_6p         from "../components/connectors.wb";
+use Dt06_6s         from "../components/connectors.wb";
 
 extend Vehicle {
-    gear: GearLever "Gear lever";
+    gear:       GearLever       "Gear lever";
+    park_brake: ParkBrakeSwitch "Parking brake switch";
 
     inline ic_gear "Gear branch" {
-        male:   Dt04_3p;
-        female: Dt06_3s;
-        port feed "FEED" pin 1;
-        port r    "R"    pin 2;
-        port d    "D"    pin 3;
+        male:   Dt04_6p;
+        female: Dt06_6s;
+        port feed "FEED"     pin 1;
+        port d1   "D1"       pin 2;
+        port d2   "D2"       pin 3;
+        port r1   "R1"       pin 4;
+        port r2   "R2"       pin 5;
+        port park "PARK BRK" pin 6;
     }
+
+    // The feed splits in the gear loom to the lever and the parking brake
+    // switch.
+    splice sp_gear_feed "Gear feed splice";
 
     // Cab side: the switch feed from the primary fuse box, shared with the
-    // key and brake switch 1; R/D requests to the VCM.
+    // key and brake switch 1; the switch lines to the VCM.
     cable gear_feed "Gear feed" {
-        type: "3-core";
+        type: "6-core";
 
-        wire red    1.0 "FEED" [main_fuses.sw, ic_gear.feed];
-        wire green  0.5 "R"    [ic_gear.r,     vcm.r];
-        wire yellow 0.5 "D"    [ic_gear.d,     vcm.d];
+        wire red          1.0 "FEED"     [main_fuses.sw, ic_gear.feed];
+        wire green        0.5 "D1"       [ic_gear.d1,    vcm.d1];
+        wire green/white  0.5 "D2"       [ic_gear.d2,    vcm.d2];
+        wire yellow       0.5 "R1"       [ic_gear.r1,    vcm.r1];
+        wire yellow/white 0.5 "R2"       [ic_gear.r2,    vcm.r2];
+        wire violet       0.5 "PARK BRK" [ic_gear.park,  vcm.park_brake];
     }
 
-    // Gear loom: the ~2 m run from the branch point to the gear lever.
+    // Gear loom: the ~2 m run from the branch point to the tunnel.
     cable gear_loom "Gear loom" {
-        type:   "3-core";
+        type:   "6-core";
         length: 2.0;
 
-        wire red    1.0 "FEED" [ic_gear.feed, gear.feed];
-        wire green  0.5 "R"    [ic_gear.r,    gear.r];
-        wire yellow 0.5 "D"    [ic_gear.d,    gear.d];
+        wire red          1.0 "FEED"     [ic_gear.feed, sp_gear_feed];
+        wire green        0.5 "D1"       [ic_gear.d1,   gear.d1];
+        wire green/white  0.5 "D2"       [ic_gear.d2,   gear.d2];
+        wire yellow       0.5 "R1"       [ic_gear.r1,   gear.r1];
+        wire yellow/white 0.5 "R2"       [ic_gear.r2,   gear.r2];
+        wire violet       0.5 "PARK BRK" [ic_gear.park, park_brake.sig];
+    }
+
+    wire red 1.0 "FEED" [sp_gear_feed, gear.feed];
+    wire red 1.0 "FEED" [sp_gear_feed, park_brake.feed];
+}
+
+// --- View: direction selector ---
+// The switch fuse feeds the gear lever and the parking brake switch; their
+// lines land on the VCM's gear connector.
+
+view schematic "Direction selector" {
+    grid: 20;
+
+    include main_fuses at (4, 8) ports {
+        east: sw;
+    }
+
+    include gear at (22, 6) ports {
+        west: feed;
+        east: d1, d2, r1, r2;
+    }
+
+    include park_brake at (22, 18) ports {
+        west: feed;
+        east: sig;
+    }
+
+    include vcm at (42, 8) ports {
+        west: d1, d2, r1, r2, park_brake;
     }
 }
 
 // --- View: gear loom ---
-// The lever-side build document: the inline's male half feeding the
-// shift-by-wire gear lever.
+// The tunnel-side build document: the inline's male half feeding the gear
+// lever and the parking brake switch, with the feed splice between them.
 
 view harness "Gear loom" {
     grid: 20;
 
-    include ic_gear.male at (0, 0);
-    include gear.x1      at (36, 0);
+    include ic_gear.male   at (0, 0);
+    include sp_gear_feed   at (40, -10);
+    include gear.x1        at (64, -2);
+    include park_brake.pwr at (64, -14);
+    include park_brake.sig at (64, 10);
 }
 
 // --- View: cab side ---

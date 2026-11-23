@@ -174,7 +174,7 @@ The original-style key switch receives a fused 12 V feed and sends separate
 RUN and START signals directly to VCM inputs. The key feed comes from the
 switch fuse in the
 [[LV system#primary-distribution|primary distribution box]], which also
-feeds the gear lever and brake switch 1.
+feeds the gear lever, the parking brake switch and brake switch 1.
 
 +12 V when the ignition switch is in the ignition (RUN) position.
 
@@ -210,9 +210,10 @@ its own 12 V feed; see [[LV system#brake-switch-feeds]].
 
 ### Direction input (DIR_F1/DIR_F2 and DIR_R1/DIR_R2)
 
-Input from the [[direction]]: momentary reverse and drive switches mounted
-on the gear lever. The VCM accepts a change only while the car is stopped
-with the brake applied, and no active request represents neutral.
+Input from the [[direction]]: two complementary switch lines per direction
+from the sprung gear lever. Each pull steps the state along R, N, D. The
+VCM accepts a step into D or R only while the car is stopped with the brake
+applied. The parking brake switch uses a fifth input on the same connector.
 
 ![Harness drawing of the cab-loom side of the gear branch: the VCM gear connector to the inline connector](/static/generated/wiring/cab_loom_gear_branch.svg#inline "Cab loom, gear branch")
 

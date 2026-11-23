@@ -24,7 +24,7 @@ extend Vehicle {
     }
 
     // Cab side: the switch feed from the primary fuse box, shared with the
-    // gear lever and brake switch 1; key signals to the VCM.
+    // gear loom and brake switch 1; key signals to the VCM.
     cable key_feed "Key feed" {
         type: "3-core";
 

@@ -53,7 +53,7 @@ other original loads stay on the Beetle's own fuse box.
 | --- | --- | --- | --- |
 | Front BMS | 5 A | Primary | Always on |
 | Rear BMS | 5 A | Primary | Always on |
-| Key, gear lever and brake switch 1 | *TBD* | Primary | Always on |
+| Key, gear lever, parking brake switch and brake switch 1 | *TBD* | Primary | Always on |
 | HV interlock loop | *TBD* | Primary | Always on |
 | VCM | 5 A | Rear | Always on |
 | Inverter B+ | 10 A | Rear | Always on |
@@ -91,8 +91,8 @@ The XT also provides four low-current automotive fuse positions through a
 four-pin FCI APEX 2.8 connector, housing 54200409. They are always live and
 are assigned to:
 
-1. The driver's switches: the ignition key, the gear lever and brake
-   switch 1. Their outputs connect directly to VCM inputs.
+1. The driver's switches: the ignition key, the gear lever, the parking
+   brake switch and brake switch 1. Their outputs connect directly to VCM inputs.
 2. Always-on supply for the front BMS.
 3. Always-on supply for the rear BMS.
 4. The [[safety#interlock|HV interlock loop]], including the emergency

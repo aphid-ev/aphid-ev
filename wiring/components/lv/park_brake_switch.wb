@@ -1,0 +1,18 @@
+// Parking brake switch
+// A single two-terminal switch on the handbrake lever, closed while the
+// handbrake is applied. It takes the gear lever's 12 V feed on one spade
+// and returns a signal to the VCM on the other. It is a warning input
+// only, so there is no second switch.
+// Each terminal is an individual female spade (Faston), not a housing.
+
+use FastonF63 from "../connectors.wb";
+
+component ParkBrakeSwitch {
+    connector pwr: FastonF63 {
+        pub port feed "FEED" pin 1; // 12 V feed spade
+    }
+
+    connector sig: FastonF63 {
+        pub port sig "SIG" pin 1; // switched-signal spade to the VCM
+    }
+}
