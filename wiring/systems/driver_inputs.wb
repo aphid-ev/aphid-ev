@@ -1,0 +1,52 @@
+// Aphid EV — driver inputs.
+//
+// The key, the two brake switches and the accelerator pedal each hang off
+// the cab loom on their own branch (looms/key_branch.wb,
+// looms/brake_branch.wb, looms/pedal_branch.wb), which own the instances
+// and the conductors. This fragment adds none of its own: it draws the
+// three circuits together. The gear lever has its own schematic in
+// looms/gear_branch.wb.
+
+extend Vehicle {}
+
+// --- View: driver inputs ---
+// The two fuse boxes on the left feed the brake switches, each from its own
+// box. The key takes its feed from the Beetle's own wiring, which is not
+// modelled. The pedal takes its 5 V supply and ground
+// from the VCM. Every signal lands on the VCM on the right.
+
+view schematic "Driver inputs" {
+    grid: 20;
+
+    include main_fuses at (4, 12) ports {
+        east: sw;
+    }
+
+    include ev_fuses at (4, 20) ports {
+        east: ev_sig;
+    }
+
+    text "Key feed: the Beetle's own wiring" at (10, 4);
+
+    include key at (22, 4) ports {
+        east: ign, crank;
+    }
+
+    include bs1 at (22, 12) ports {
+        west: b_pos;
+        east: sig;
+    }
+
+    include bs2 at (22, 20) ports {
+        west: b_pos;
+        east: sig;
+    }
+
+    include pedal at (22, 30) ports {
+        east: sens_5v, apps1, apps2, gnd;
+    }
+
+    include vcm at (44, 16) ports {
+        west: ign, crank, brake_1, brake_2, accel_5v, accel_1, accel_2, accel_gnd;
+    }
+}

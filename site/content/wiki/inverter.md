@@ -12,8 +12,9 @@ three-phase drive current for the [[motor]].
 The 80 kW inverter comes from another Nissan Leaf. It controls the motor
 and receives torque commands from the Vehicle Control Module (VCM) over
 CAN1. The inverter measures HV bus voltage and traction current and
-publishes both over CAN1. Its DC-link voltage measurement is used to
-determine when [[contactors#precharge|precharge]] is complete.
+publishes both over CAN1. The VCM compares its DC-link voltage with the
+BMS measurements when it decides that
+[[contactors#precharge|precharge]] is complete.
 
 This page collects information on the mechanical, electrical and software
 interfaces of the Gen 2 80 kW unit.
@@ -73,9 +74,8 @@ Not all pins are populated.
 Since the high power 12 V supply is fused at 10 A, 1.5 mm² should be
 enough.
 
-The wiring model gives these pinouts for the connectors:
-
-![Pinout of the inverter's HV, motor phase and control connectors](/static/generated/wiring/inverter_pinouts.svg#inline "Inverter pinouts")
+The drawing of the control connector face, with the conductor on each pin,
+is under [[pinouts]].
 
 ## Interlock {#interlock}
 

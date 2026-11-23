@@ -1,5 +1,13 @@
-// Mechanical Service Disconnect
-// Opens the front battery negative leg and carries the HV interlock loop.
+// Manual service disconnect
+// Sits in the front battery pack, on the negative leg between the negative
+// contactor and the pack terminal. It holds the traction pack's 250 A main
+// fuse and carries the HV interlock loop.
+//
+// The part is not chosen. The candidate is the Amphenol MINI-MSD: a
+// MINI-MSDM250 plug, which holds the 250 A fuse, in a MINI-MSDF000F or
+// MINI-MSDF000R receptacle. The receptacle has two M6 studs for the HV
+// cables and a two-way HVIL connector, MSD-HVIL-2S. The connectors below
+// follow that part.
 
 component Msd {
     component Fuse250a {
@@ -9,12 +17,12 @@ component Msd {
 
     fuse: Fuse250a "250A fuse";
 
-    connector hv "MSD HV 2p" {
+    connector hv "M6 studs" {
         pub port hv_in  "HV IN"  pin 1;
         pub port hv_out "HV OUT" pin 2;
     }
 
-    connector intlk "MSD interlock 2p" {
+    connector intlk "MSD-HVIL-2S" {
         pub port interlock_in  "INTLK IN"  pin 1;
         pub port interlock_out "INTLK OUT" pin 2;
     }

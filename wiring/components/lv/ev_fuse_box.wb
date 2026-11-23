@@ -32,15 +32,15 @@ component EvFuseBox {
     }
 
     // Always-live loads.
-    f_vcm: Fuse "VCM 5 A";
+    f_vcm: Fuse "VCM 15 A";
     f_inv: Fuse "Inverter B+ 10 A";
     f_obc: Fuse "OBC sense 7.5 A";
 
     // Relay coils, through the relay stud.
-    f_coils: Fuse "Relay coils";
+    f_coils: Fuse "Relay coils 3 A";
 
     // Switched loads, one fuse and one relay each.
-    f_ev_sig: Fuse "EV signals";
+    f_ev_sig: Fuse "EV signals 7.5 A";
     f_pump:   Fuse "Pump 10 A";
     f_fan:    Fuse "Fan 10 A";
 

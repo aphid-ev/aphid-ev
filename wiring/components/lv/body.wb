@@ -1,0 +1,16 @@
+// Car body
+// The steel body is the 12 V return. Battery negative is strapped to it at
+// a ground stud beside the battery, and the ECUs bring their grounds to
+// that same stud on their own leads. Lamps, the pump and the fan ground to
+// the body where they sit, on the BODY port.
+
+component Body {
+    connector x1 "Ground stud M8" {
+        pub port stud "GND STUD" pin 1;
+    }
+
+    pub port gnd "BODY";
+
+    // The body itself: not a cable.
+    wire black 35 [stud, gnd];
+}

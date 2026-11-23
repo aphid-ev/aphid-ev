@@ -1,10 +1,10 @@
 ---
 id: 6duk.w3
 title: Finalize and review the wirebug drawings of the whole car
-status: in_progress
+status: done
 priority: P0
 created: "2026-11-23T06:28:12.569410Z"
-updated: "2026-11-23T06:48:49.168487Z"
+updated: "2026-11-23T18:22:18.774662Z"
 tags:
   - wiring
   - site

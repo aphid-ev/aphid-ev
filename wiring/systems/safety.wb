@@ -1,26 +1,69 @@
 // Aphid EV — safety system: the HV interlock loop.
 //
-// A `Vehicle` fragment owning the safety devices (MSD, e-stop) and the
+// A `Vehicle` fragment owning the e-stop and the
 // interlock chain that threads every HV enclosure. The primary fuse box sources
 // the loop and the VCM terminates it; both are declared in other
 // fragments and reached through the merged flat namespace.
 
-use Msd   from "../components/hv/msd.wb";
 use EStop from "../components/lv/e_stop.wb";
 
 extend Vehicle {
-    msd:    Msd   "MSD";
     e_stop: EStop "E-Stop";
 
     // --- HV interlock chain ---
-    // Primary fuse box sources 12V → e-stop → MSD → front → rear → hvjb → inverter → VCM
+    // Primary fuse box sources 12V → e-stop → front (through its MSD) → rear → hvjb → inverter → VCM
     // The Mitsubishi Outlander OBC/DC-DC has no interlock functionality.
     // (the front → rear link runs in the tunnel loom, looms/tunnel.wb)
 
-    wire green 0.5 [main_fuses.interlock, e_stop.interlock_in];
-    wire green 0.5 [e_stop.interlock_out, msd.interlock_in];
-    wire green 0.5 [msd.interlock_out,    front.interlock_in];
-    wire green 0.5 [rear.interlock_out,   hvjb.interlock_in];
-    wire green 0.5 [hvjb.interlock_out,   inv.interlock_in];
-    wire green 0.5 [inv.interlock_out,    vcm.interlock];
+    wire green 0.5 "INTLK" [main_fuses.interlock, e_stop.interlock_in];
+    wire green 0.5 "INTLK" [e_stop.interlock_out, front.interlock_in];
+    wire green 0.5 "INTLK" [rear.interlock_out,   hvjb.interlock_in];
+    wire green 0.5 "INTLK" [hvjb.interlock_out,   inv.interlock_in];
+    wire green 0.5 "INTLK" [inv.interlock_out,    vcm.interlock];
+}
+
+// --- View: interlock and safe power ---
+// The interlock loop runs left to right along the top, from its fuse
+// through the e-stop and the front pack with its MSD, then back along the
+// row below through the rear pack, the junction box and the inverter, and
+// down to the VCM. The VCM switches safe power on while the loop is closed; it feeds
+// the contactor coils in the rear pack and, through the tunnel loom, the
+// front pack.
+
+view schematic "Interlock and safe power" {
+    grid: 20;
+
+    include main_fuses at (4, 4) ports {
+        east: interlock;
+    }
+
+    include e_stop at (20, 4) ports {
+        west: interlock_in;
+        east: interlock_out;
+    }
+
+    include front at (36, 4) ports {
+        west: interlock_in;
+        east: interlock_out, safe_pwr;
+    }
+
+    include rear at (36, 18) ports {
+        east: safe_pwr, interlock_in;
+        west: interlock_out;
+    }
+
+    include hvjb at (20, 18) ports {
+        east: interlock_in;
+        west: interlock_out;
+    }
+
+    include inv at (4, 18) ports {
+        east: interlock_in;
+        west: interlock_out;
+    }
+
+    include vcm at (4, 30) ports {
+        west: interlock;
+        east: safe_pwr;
+    }
 }

@@ -113,10 +113,10 @@ view schematic "Cell Module" {
         hv_pos at (west, 7);
         hv_neg at (west, 9);
 
-        iso_spi_up_h   at (19, north);
-        iso_spi_up_l   at (21, north);
-        iso_spi_down_h at (19, south);
-        iso_spi_down_l at (21, south);
+        iso_spi_up_h   at (east, 5);
+        iso_spi_up_l   at (east, 7);
+        iso_spi_down_h at (east, 9);
+        iso_spi_down_l at (east, 11);
     }
 
     include pack at (6, 8) ports {
@@ -125,9 +125,8 @@ view schematic "Cell Module" {
     }
 
     include slave at (20, 8) ports {
-        west:  c0, c1, c2, c3, c4, c5, c6, c7, c8, ntc1_p, ntc1_n, ntc2_p, ntc2_n;
-        north: iso_spi_up_h, iso_spi_up_l;
-        south: iso_spi_down_h, iso_spi_down_l;
+        west: c0, c1, c2, c3, c4, c5, c6, c7, c8, ntc1_p, ntc1_n, ntc2_p, ntc2_n;
+        east: iso_spi_up_h, iso_spi_up_l, iso_spi_down_h, iso_spi_down_l;
     }
 
     text "8s2p cell pack from a Renault Zoe" at (6, 24);

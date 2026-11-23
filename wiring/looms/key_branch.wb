@@ -1,14 +1,15 @@
 // Aphid EV — ignition key loom.
 //
-// The dash-mounted starter key hangs off the cab harness through its own
-// inline connector (a mated Deutsch DT 3-way pair) so the ~2 m key loom
-// can be unplugged as one. Three conductors cross the branch: a fused 12 V
-// feed in from the primary fuse box, and the key's IGN and CRANK outputs back to
-// the VCM. The main run carries the female half; the key loom the male.
+// The dash-mounted starter key keeps switching the Beetle's original
+// ignition circuits on its original feed. The VCM taps its IGN and CRANK
+// terminals. The two leads hang off the cab harness through their own
+// inline connector (a mated Deutsch DT 2-way pair) so the ~2 m key loom
+// can be unplugged as one. The main run carries the female half; the key
+// loom the male.
 
 use KeySwitch from "../components/lv/key_switch.wb";
-use Dt04_3p   from "../components/connectors.wb";
-use Dt06_3s   from "../components/connectors.wb";
+use Dt04_2p   from "../components/connectors.wb";
+use Dt06_2s   from "../components/connectors.wb";
 
 extend Vehicle {
     key: KeySwitch "Ignition key";
@@ -16,29 +17,25 @@ extend Vehicle {
     // The mated pair: the main loom carries the female half, the key loom
     // the male half.
     inline ic_key "Key branch" {
-        male:   Dt04_3p;
-        female: Dt06_3s;
-        port feed  "FEED"  pin 1;
-        port ign   "IGN"   pin 2;
-        port crank "CRANK" pin 3;
+        male:   Dt04_2p;
+        female: Dt06_2s;
+        port ign   "IGN"   pin 1;
+        port crank "CRANK" pin 2;
     }
 
-    // Cab side: the switch feed from the primary fuse box, shared with the
-    // gear loom and brake switch 1; key signals to the VCM.
-    cable key_feed "Key feed" {
-        type: "3-core";
+    // Cab side: key signals to the VCM.
+    cable key_feed "Key signals" {
+        type: "2-core";
 
-        wire red    1.0 "FEED"  [main_fuses.sw, ic_key.feed];
-        wire violet 0.5 "IGN"   [ic_key.ign,    vcm.ign];
-        wire grey   0.5 "CRANK" [ic_key.crank,  vcm.crank];
+        wire violet 0.5 "IGN"   [ic_key.ign,   vcm.ign];
+        wire grey   0.5 "CRANK" [ic_key.crank, vcm.crank];
     }
 
     // Key loom: the ~2 m run from the branch point to the dash key switch.
     cable key_loom "Key loom" {
-        type:   "3-core";
+        type:   "2-core";
         length: 2.0;
 
-        wire red    1.0 "FEED"  [ic_key.feed,  key.batt];
         wire violet 0.5 "IGN"   [ic_key.ign,   key.ign];
         wire grey   0.5 "CRANK" [ic_key.crank, key.crank];
     }
@@ -46,7 +43,7 @@ extend Vehicle {
 
 // --- View: key loom ---
 // The key-side build document: the inline's male half (crimped onto this
-// loom) feeding the dash key switch.
+// loom) to the key switch's run and start terminals.
 
 view harness "Key loom" {
     grid: 20;
@@ -57,8 +54,7 @@ view harness "Key loom" {
 
 // --- View: cab side ---
 // VCM to the branch point; the inline shows its female half, the housing
-// crimped onto the cab loom. The fuse box feed has no connector and is not
-// drawn.
+// crimped onto the cab loom.
 
 view harness "Cab loom — key branch" {
     grid: 20;

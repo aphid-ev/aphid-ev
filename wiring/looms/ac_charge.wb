@@ -43,7 +43,7 @@ extend Vehicle {
 
     // The feedback switch, the LEDs and the button share one return to the
     // VCM.
-    wire black 0.5 "INLET GND" [vcm.inlet_gnd, inlet_lock.fb_2, ac_inlet.led_gnd, chg_button.gnd];
+    wire black 0.5 "INLET GND" [vcm.inlet_gnd, ac_inlet.led_gnd, inlet_lock.fb_2, chg_button.gnd];
 }
 
 // --- View: AC charge harness ---
@@ -65,13 +65,11 @@ view schematic "Charging control" {
     grid: 20;
 
     include charger at (6, 3) ports {
-        east:  cp;
-        south: dc_sw;
+        east: cp, dc_sw;
     }
 
     include vcm at (6, 20) ports {
-        north: dcdc_en;
-        east:  pp, led_red, led_green, lock_a, lock_b, lock_fb, chg_stop, inlet_gnd;
+        east: dcdc_en, pp, led_red, led_green, lock_a, lock_b, lock_fb, chg_stop, inlet_gnd;
     }
 
     include ac_inlet at (30, 9) ports {

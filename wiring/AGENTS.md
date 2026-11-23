@@ -13,6 +13,11 @@ concept. The pages are `hv-system`, `lv-system`, `batteries`, `bms`,
 `contactors`, `obc`, `ev-can`, `safety` and `vcm` under `site/content/wiki/`. Read the relevant page before changing
 a system, and update it in the same commit when the change alters the design.
 
+A system's page embeds its schematic views. Harness and pinout views go on
+the drawing pages instead: `cab-loom`, `rear-loom`, `hv-cables` and
+`pinouts`, with `wiring` as their index. When you add a view, embed it on
+the page it belongs to.
+
 ## Layout
 
 The whole vehicle is one component, `Vehicle`. `main.wb` declares it and pulls

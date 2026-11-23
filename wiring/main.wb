@@ -14,6 +14,7 @@ fragment "systems/lv.wb";
 fragment "systems/can.wb";
 fragment "systems/cooling.wb";
 fragment "systems/lighting.wb";
+fragment "systems/driver_inputs.wb";
 fragment "looms/tunnel.wb";
 fragment "looms/engine_bay.wb";
 fragment "looms/ac_charge.wb";
@@ -37,12 +38,6 @@ view schematic "HV System Overview" {
     // into the e-stop, which is the head of the HV interlock loop.
     include main_fuses at (4, 26) ports {
         east: interlock;
-    }
-
-    include msd at (10, 10) ports {
-        east:  hv_in;
-        west:  hv_out;
-        south: interlock_in, interlock_out;
     }
 
     include front at (25, 10) ports {
