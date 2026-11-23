@@ -16,8 +16,21 @@ status over CAN2.
 control, and [[EV-CAN#vehicle-buses]] describes the CAN2 topology.
 
 Both BMS controllers have an always-on 12 V supply from the primary
-distribution box in the [[LV system#primary-distribution|LV system]], so
-they stay on while the car is off.
+distribution box in the [[LV system#primary-distribution|LV system]]. A
+controller sleeps with only the wake receiver of its CAN transceiver
+alive. Traffic on CAN2 wakes it: the transceiver switches the board's
+supply on, and the controller then keeps itself alive from the always-on
+feed and decides when to sleep again. The VCM can therefore reach a
+BMS without the contactor coil supply being on, and so can the
+[[can-usb|CAN/USB interface]] during service.
+
+The transceiver needs a sleep mode with a wake receiver on the bus and an
+output that switches the board's regulator, such as the NXP TJA1043 or the
+TI TCAN1043. The part is not chosen. Its sleep current, tens of microamps
+for these parts, is the drain on the 12 V battery while the car is off.
+
+Safe power from the VCM is a monitoring input on the board. It tells the
+BMS whether the contactor coil supply is present.
 
 # I/O
 
@@ -27,6 +40,10 @@ what it connects to inside its pack, or where it leaves the pack.
 ![Schematic of the front BMS controller with every port and a label naming what it connects to](/static/generated/wiring/front_bms_i_o.svg#inline "Front BMS I/O")
 
 ![Schematic of the rear BMS controller with every port and a label naming what it connects to](/static/generated/wiring/rear_bms_i_o.svg#inline "Rear BMS I/O")
+
+Safe power arrives on the pack's signal connector with the other
+low-voltage signals. Inside the pack it feeds the contactor coils and the
+BMS monitoring input.
 
 Each board has three high-voltage inputs on a connector of their own, apart
 from the low-voltage connector, so the board can keep them isolated:

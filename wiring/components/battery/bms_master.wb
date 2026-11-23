@@ -18,14 +18,20 @@ component BmsMaster {
         pub port iso_spi_l "ISO SPI-" pin 2;
     }
 
+    // CAN2. Bus traffic also wakes the board from sleep.
     connector can "CAN 4p" {
         pub port can_h "CAN H" pin 1;
         pub port can_l "CAN L" pin 2;
     }
 
+    // B+ is always live. The board sleeps until traffic on CAN2 wakes
+    // it through its transceiver, then holds itself on from B+. Safe power
+    // from the VCM is a monitoring input: the board sees whether the
+    // contactor coil supply is present.
     connector power "Power 4p" {
-        pub port b_pos "B+"  pin 1;
-        pub port gnd   "GND" pins [2, 3, 4];
+        pub port b_pos    "B+"       pin 1;
+        pub port gnd      "GND"      pins [2, 3];
+        pub port safe_pwr "SAFE PWR" pin 4;
     }
 
     connector hv_sense "HV sense 6p" {

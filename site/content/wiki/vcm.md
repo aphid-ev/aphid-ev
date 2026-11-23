@@ -67,7 +67,8 @@ executing as expected. The two communicate over a serial link.
 # Operating states {#operating-states}
 
 - **Off:** the main contactors and EV-system relay are open. The VCM
-  sleeps on its always-on supply and the BMS controllers stay powered. The
+  sleeps on its always-on supply. The BMS controllers sleep unless they
+  are keeping themselves alive; traffic on CAN2 wakes them. The
   key or a charge cable on the proximity pilot wakes the VCM.
 - **Ready:** the control networks and switched EV loads are powered. After
   safety checks, the system performs precharge and closes the main

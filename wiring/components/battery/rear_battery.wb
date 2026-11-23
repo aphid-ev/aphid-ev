@@ -73,9 +73,10 @@ component RearBattery {
 
     // --- Contactor control ---
     // Safe power feeds coil high side of both contactors
+    // and a monitoring input on the BMS
     // BMS low-side drivers control coil ground
 
-    wire red   1.0 [safe_pwr,     c_pos.coil_p, c_neg.coil_p];
+    wire red   1.0 [safe_pwr,     c_pos.coil_p, c_neg.coil_p, bms.safe_pwr];
     wire black 1.0 [bms.cont_1_n, c_pos.coil_n];
     wire black 1.0 [bms.cont_2_n, c_neg.coil_n];
 
@@ -167,7 +168,7 @@ view schematic "Rear Battery" {
     }
 
     include bms at (45, 25) ports {
-        west:  out_sense_p, pack_sense_p, iso_spi_l, iso_spi_h, cont_1_n;
+        west:  safe_pwr, out_sense_p, pack_sense_p, iso_spi_l, iso_spi_h, cont_1_n;
         east:  pack_sense_n, out_sense_n, cont_2_n;
         south: b_pos, gnd, can_h, can_l;
     }
@@ -181,7 +182,7 @@ view schematic "Rear BMS I/O" {
     grid: 20;
 
     include bms at (20, 10) ports {
-        west: b_pos, gnd, can_h, can_l;
+        west: b_pos, gnd, safe_pwr, can_h, can_l;
         east: iso_spi_h, iso_spi_l, cont_1_n, cont_2_n, cont_3_n, shunt_p, shunt_n, pack_sense_p, pack_sense_n, out_sense_p, out_sense_n;
     }
 }
