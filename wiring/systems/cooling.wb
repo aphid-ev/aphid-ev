@@ -37,17 +37,17 @@ view schematic "Cooling system" {
         south: fan_ctrl;
     }
 
-    include ev_fuses at (4, 14) ports {
+    include ev_fuses at (4, 16) ports {
         north: fan_ctrl;
         east:  pump, fan;
     }
 
-    include pump at (26, 4) ports {
+    include pump at (26, 5) ports {
         west:  pwm, tach, v12;
         south: gnd;
     }
 
-    include fan at (26, 15) ports {
+    include fan at (26, 17) ports {
         west:  v12;
         south: gnd;
     }

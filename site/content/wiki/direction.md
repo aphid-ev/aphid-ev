@@ -46,9 +46,6 @@ input and has no second switch.
 
 ![Schematic of the switch fuse feeding the gear lever and the parking brake switch, with their lines on the VCM gear connector](/static/generated/wiring/direction_selector.svg#inline "Direction selector")
 
-The schematic shows the lever and the VCM sides as named stubs because the
-lines cross the gear branch connector.
-
 ![Harness drawing of the gear loom from the inline connector to the gear lever and the parking brake switch](/static/generated/wiring/gear_loom.svg#inline "Gear loom")
 
 > [!WARNING]
