@@ -45,7 +45,12 @@ in `ecus/bootloader/can-echo` shows the linker setup.
 
 The bootloader does not reset the clocks before the jump. The application
 starts with the system clock at 144 MHz from the 16 MHz crystal and the
-FDCAN clock at 48 MHz.
+FDCAN clock at 48 MHz. The flash wait states and the PWR and SYSCFG clocks
+also stay as the bootloader set them.
+
+The peripherals the bootloader used are reset before the jump. FDCAN,
+GPIOB and the CRC unit go through their RCC reset and have their clocks
+stopped, and SysTick is cleared to its reset values.
 
 # Image header {#image-header}
 

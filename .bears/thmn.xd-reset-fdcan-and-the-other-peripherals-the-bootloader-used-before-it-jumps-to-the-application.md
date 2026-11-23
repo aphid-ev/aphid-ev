@@ -1,12 +1,13 @@
 ---
 id: thmn.xd
 title: Reset FDCAN and the other peripherals the bootloader used before it jumps to the application
-status: open
+status: done
 priority: P2
 created: "2026-11-23T19:59:32.443028817Z"
-updated: "2026-11-23T19:59:32.443028817Z"
+updated: "2026-11-23T20:17:08.189857119Z"
 tags:
   - bootloader
+attempts: 1
 ---
 
 Found in the review of the bootloader for thmn.am.

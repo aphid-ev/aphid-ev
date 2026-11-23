@@ -15,7 +15,7 @@ use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
 use crc::Crc;
 use flash::{Flash, FlashLayout};
-use pac::{GPIOB, PWR, RCC, SCB, SYST};
+use pac::{PWR, RCC, SCB, SYST};
 use panic_halt as _;
 
 #[cfg(all(feature = "stm32g431cx", feature = "stm32g491xe"))]
@@ -97,7 +97,9 @@ fn main() -> ! {
             State::Wait { valid } => state_wait(&mut can, &mut systick, valid),
             State::Bootloader => state_bootloader(&mut can, &app),
             State::Start => state_start(&mut can, &app, &mut crc),
-            State::Application => state_application(&mut can, &mut rcc, &mut gpiob, &mut scb, app),
+            State::Application => {
+                state_application(can, crc, &mut rcc, &mut systick, &mut scb, app)
+            }
             // Both of these answer the programmer, whether they worked or
             // not, so it is never left waiting on a command that finished.
             State::Erase => {
@@ -268,16 +270,27 @@ fn state_write(
     Ok(())
 }
 
+/// Hands the chip over with every peripheral the bootloader used back in its
+/// reset state. The clock tree, flash wait states, PWR and SYSCFG stay as
+/// `init_clock` set them, as the wiki documents.
 fn state_application(
-    can: &mut Can,
+    can: Can,
+    crc: Crc,
     rcc: &mut RCC,
-    gpiob: &mut GPIOB,
+    systick: &mut SYST,
     scb: &mut SCB,
     app: App,
 ) -> ! {
-    can.reset(rcc, gpiob);
+    can.reset(rcc);
+    crc.reset(rcc);
 
-    // TODO: De-init other peripherals
+    // SysTick is a core peripheral without a reset bit: clear what
+    // state_wait configured.
+    systick.disable_counter();
+    systick.disable_interrupt();
+    systick.set_reload(0);
+    systick.clear_current();
+    systick.set_clock_source(SystClkSource::External);
 
     app.bootload(scb)
 }

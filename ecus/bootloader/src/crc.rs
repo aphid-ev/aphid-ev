@@ -43,6 +43,15 @@ impl Crc {
     }
 }
 
+impl Crc {
+    /// Puts the CRC unit back in its reset state and stops its clock.
+    pub fn reset(self, rcc: &mut RCC) {
+        rcc.ahb1rstr().modify(|_, w| w.crcrst().set_bit());
+        rcc.ahb1rstr().modify(|_, w| w.crcrst().clear_bit());
+        rcc.ahb1enr().modify(|_, w| w.crcen().clear_bit());
+    }
+}
+
 impl Crc32 for Crc {
     fn checksum(&mut self, head: &[u8], tail: &[u8]) -> u32 {
         self.crc.cr().modify(|_, w| w.reset().set_bit());

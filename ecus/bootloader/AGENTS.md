@@ -48,4 +48,6 @@ In addition to `ecus/AGENTS.md`.
   sysclk, 48 MHz FDCAN. The bootloader sets five flash wait states where
   embassy computes four, which is safe but not identical.
 - The jump to the application does not de-initialise the clocks, so the
-  application's `embassy_stm32::init` starts from a configured RCC.
+  application's `embassy_stm32::init` starts from a configured RCC. Every
+  peripheral the bootloader uses is reset in `state_application`; one you
+  add goes there too.
