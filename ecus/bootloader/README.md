@@ -8,7 +8,7 @@ listed in the `justfile`.
 | Feature | Chip | Flash |
 | --- | --- | --- |
 | `stm32g431cx` | STM32G431 | 128 KiB in 2 KiB pages |
-| `stm32g491rx` | STM32G491 | 512 KiB in 4 KiB pages |
+| `stm32g491xe` | STM32G491xE, every 512 KiB package | 512 KiB in 2 KiB pages |
 
 `can-echo/` is a minimal application for testing a flash over CAN. It links
 at the application offset, `0x08002000`, and echoes every frame it receives,

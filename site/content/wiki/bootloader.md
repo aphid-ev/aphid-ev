@@ -33,6 +33,9 @@ The protocol uses classic CAN frames with standard 11-bit identifiers at
 | Bootloader | `0x08000000` | 8 KiB | 8 KiB |
 | Application | `0x08002000` | 120 KiB | 504 KiB |
 
+**Erase flash** works in pages of 2 KiB on both chips: 64 pages on the
+STM32G431 and 256 on the STM32G491. The bootloader takes the first four.
+
 An application must be linked at `0x08002000`. When it starts the
 application, the bootloader points the vector table register at the start
 of the application region and jumps to the reset vector it finds there. An

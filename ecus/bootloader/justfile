@@ -5,7 +5,7 @@
 
 # Space-separated `feature:target` pairs to build, one per MCU family,
 # for example 'stm32f4:thumbv7em-none-eabihf'.
-families := 'stm32g431cx:thumbv7em-none-eabi stm32g491rx:thumbv7em-none-eabi'
+families := 'stm32g431cx:thumbv7em-none-eabi stm32g491xe:thumbv7em-none-eabi'
 
 # Build the bootloader for one family
 build feature target:
