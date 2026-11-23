@@ -74,6 +74,7 @@ extend Vehicle {
         bl_left.gnd,
         bl_right.gnd,
         bl_chmsl.gnd,
+        rev_light.gnd,
     ];
     wire black 1.0 [vcm.gnd, charger.gnd];
     wire black 2.5 [vcm.gnd, inv.b_neg];

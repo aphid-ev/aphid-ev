@@ -53,7 +53,7 @@ view harness "CAN harness" {
 // --- View: rear LV harness ---
 // The VCM's 12V, cooling and lighting connectors on the left, the loads they
 // drive on the right. The chassis-ground rail runs VCM → pump → fan → stop
-// lamps.
+// lamps → reverse light.
 
 view harness "Rear LV harness" {
     grid: 20;
@@ -62,11 +62,12 @@ view harness "Rear LV harness" {
     include vcm.cooling at (0, 8);
     include vcm.lights  at (0, 18);
 
-    include pump.x1     at (44, 0);
-    include fan.x1      at (44, 10);
-    include bl_left.x1  at (44, 18);
-    include bl_right.x1 at (44, 26);
-    include bl_chmsl.x1 at (44, 34);
+    include pump.x1      at (44, 0);
+    include fan.x1       at (44, 10);
+    include bl_left.x1   at (44, 18);
+    include bl_right.x1  at (44, 26);
+    include bl_chmsl.x1  at (44, 34);
+    include rev_light.x1 at (44, 42);
 }
 
 // --- View: signal ground leads ---

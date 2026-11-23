@@ -21,11 +21,13 @@ system online.
 
 ![Schematic of the 12 V supply: the battery and the DC-DC on the primary fuse box, which feeds the rear EV fuse box](/static/generated/wiring/12v_supply.svg#inline "12 V supply")
 
-![Schematic of the VCM brake-light output feeding three stop lamps](/static/generated/wiring/brake_lights.svg#inline "Brake lights")
+![Schematic of the VCM brake-light output feeding three stop lamps and its reverse-light output feeding the reverse light](/static/generated/wiring/brake_and_reverse_lights.svg#inline "Brake and reverse lights")
 
 The wiring model covers the EV systems and the circuits the conversion
 changes, such as the brake lights, which the VCM drives so that
-regenerative braking lights them. The rest of the Beetle's original
+regenerative braking lights them. The VCM also drives the reverse light,
+which the regulations require. The car has no gearbox switch for it, so the
+VCM lights it while the selected direction is R. The rest of the Beetle's original
 electrical system is not modelled.
 
 ## Harness
@@ -33,7 +35,7 @@ electrical system is not modelled.
 The rear loom carries the VCM's 12 V, cooling and lighting leads and the
 chassis-ground rail.
 
-![Harness drawing of the rear LV loom from the VCM to the coolant pump, radiator fan and stop lamps](/static/generated/wiring/rear_lv_harness.svg#inline "Rear LV harness")
+![Harness drawing of the rear LV loom from the VCM to the coolant pump, radiator fan, stop lamps and reverse light](/static/generated/wiring/rear_lv_harness.svg#inline "Rear LV harness")
 
 The OBC/DC-DC signal ground and the inverter B- return to the VCM on their
 own leads.

@@ -1,34 +1,43 @@
-// Aphid EV — exterior lighting (stop lamps).
+// Aphid EV — exterior lighting (stop lamps and reverse light).
 //
-// A `Vehicle` fragment owning the brake lights. They are driven directly
-// from the VCM's brake-light output — no relay — so the VCM can light them
-// on either a brake switch press or regenerative braking. The three lamps
-// share one feed; their chassis grounds live in the 12V fragment
-// (systems/lv.wb) with every other ground.
+// A `Vehicle` fragment owning the brake lights and the reverse light. The
+// brake lights are driven directly from the VCM's brake-light output — no
+// relay — so the VCM can light them on either a brake switch press or
+// regenerative braking. The three lamps share one feed. The car has no
+// gearbox switch for reverse, so the VCM also drives the reverse light,
+// on while the selected direction is R. The chassis grounds live in the
+// 12V fragment (systems/lv.wb) with every other ground.
 
-use BrakeLight from "../components/lv/brake_light.wb";
+use BrakeLight   from "../components/lv/brake_light.wb";
+use ReverseLight from "../components/lv/reverse_light.wb";
 
 extend Vehicle {
-    bl_left:  BrakeLight "Brake light L";
-    bl_right: BrakeLight "Brake light R";
-    bl_chmsl: BrakeLight "High-mount stop lamp";
+    bl_left:   BrakeLight   "Brake light L";
+    bl_right:  BrakeLight   "Brake light R";
+    bl_chmsl:  BrakeLight   "High-mount stop lamp";
+    rev_light: ReverseLight "Reverse light";
 
     // One high-side stop feed fans out to all three lamps.
     wire red 1.0 "STOP" [vcm.brake, bl_left.stop, bl_right.stop, bl_chmsl.stop];
+
+    // High-side feed to the single reverse light.
+    wire white 1.0 "REVERSE" [vcm.reverse, rev_light.rev];
 }
 
-// --- View: brake lights ---
+// --- View: brake and reverse lights ---
 // The VCM's brake-light output feeding the left, right, and high-mount
-// stop lamps in parallel.
+// stop lamps in parallel, and its reverse-light output feeding the reverse
+// light.
 
-view schematic "Brake lights" {
+view schematic "Brake and reverse lights" {
     grid: 20;
 
     include vcm at (4, 8) ports {
-        east: brake;
+        east: brake, reverse;
     }
 
-    include bl_left  at (26, 3) ports { west: stop; }
-    include bl_right at (26, 8) ports { west: stop; }
-    include bl_chmsl at (26, 13) ports { west: stop; }
+    include bl_left   at (26, 3) ports { west: stop; }
+    include bl_right  at (26, 8) ports { west: stop; }
+    include bl_chmsl  at (26, 13) ports { west: stop; }
+    include rev_light at (26, 18) ports { west: rev; }
 }
