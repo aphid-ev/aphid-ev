@@ -7,6 +7,8 @@ created: "2026-11-22T10:53:27.308439893Z"
 updated: "2026-11-22T10:53:27.308439893Z"
 tags:
   - wiring
+depends_on:
+  - 6duk.w3
 ---
 
 ## Summary
