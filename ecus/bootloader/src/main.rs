@@ -7,7 +7,9 @@ mod crc;
 mod flash;
 
 use app::App;
-use boot_protocol::{Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, WAKEUP_WINDOW_MS};
+use boot_protocol::{
+    Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, WAKEUP_WINDOW_MS, check_program,
+};
 use can::Can;
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
@@ -94,7 +96,7 @@ fn main() -> ! {
         state = match state {
             State::Init => state_init(&mut can, &app, &mut crc),
             State::Wait { valid } => state_wait(&mut can, &mut systick, valid),
-            State::Bootloader => state_bootloader(&mut can),
+            State::Bootloader => state_bootloader(&mut can, &app),
             State::Start => state_start(&mut can, &app, &mut crc),
             State::Application => state_application(&mut can, &mut rcc, &mut gpiob, &mut scb, app),
             // Both of these answer the programmer, whether they worked or
@@ -204,14 +206,19 @@ fn state_wait(can: &mut Can, systick: &mut SYST, valid: bool) -> State {
     }
 }
 
-fn state_bootloader(can: &mut Can) -> State {
+fn state_bootloader(can: &mut Can, app: &App) -> State {
     loop {
         if let Some(frame) = can.receive() {
             match frame.as_command(NODE_ID) {
                 Some(Ok(Command::Start)) => return State::Start,
                 Some(Ok(Command::Erase)) => return State::Erase,
                 Some(Ok(Command::Program { offset, len, crc })) => {
-                    return State::Write { offset, len, crc };
+                    match check_program(offset, len, app.flash.application.len()) {
+                        Ok(()) => return State::Write { offset, len, crc },
+                        Err(error) => {
+                            can.send(&Frame::response(Err(error))).ok();
+                        }
+                    }
                 }
                 // A command meant for us that we refuse, such as an erase
                 // carrying the wrong key.
