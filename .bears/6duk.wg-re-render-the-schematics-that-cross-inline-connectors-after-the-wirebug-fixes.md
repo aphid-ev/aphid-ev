@@ -1,12 +1,13 @@
 ---
 id: 6duk.wg
 title: Re-render the schematics that cross inline connectors after the wirebug fixes
-status: open
+status: done
 priority: P1
 created: "2026-11-23T09:55:14.369754Z"
-updated: "2026-11-23T09:55:14.369754Z"
+updated: "2026-11-23T16:25:39.041950Z"
 tags:
   - wiring
+attempts: 1
 ---
 
 ## Summary

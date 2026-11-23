@@ -68,7 +68,7 @@ extend Vehicle {
 view schematic "Direction selector" {
     grid: 20;
 
-    include main_fuses at (4, 8) ports {
+    include main_fuses at (4, 6) ports {
         east: sw;
     }
 
@@ -82,7 +82,7 @@ view schematic "Direction selector" {
         east: sig;
     }
 
-    include vcm at (42, 8) ports {
+    include vcm at (42, 7) ports {
         west: d1, d2, r1, r2, park_brake;
     }
 }
