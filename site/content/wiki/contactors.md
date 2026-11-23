@@ -48,6 +48,8 @@ relevant BMS:
   [[safety#interlock|HV interlock loop]] is valid.
 - Both [[bms|BMS]] controllers switch the low side of their main
   contactor coils. The front BMS also controls the precharge contactor.
+- The same high-side supply is a monitoring input on each BMS, so the BMS
+  sees when the VCM takes it away.
 
 # Precharge
 
