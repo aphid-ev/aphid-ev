@@ -1,0 +1,17 @@
+[package]
+name = "manager"
+version = "0.1.0"
+description = "Core library and CLI of the desktop app that manages the ECUs over CAN"
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+boot-protocol = { path = "../../crates/boot-protocol" }
+can-usb-host = { path = "../../ecus/can-usb/host" }
+can-usb-protocol = { path = "../../crates/can-usb-protocol" }
+clap = { version = "4.6.9", features = ["derive"] }
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["macros", "rt", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1.54.1", features = ["macros", "rt", "time", "test-util"] }

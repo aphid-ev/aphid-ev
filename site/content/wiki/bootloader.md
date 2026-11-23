@@ -13,8 +13,8 @@ protocol between the bootloader and the programming device.
 
 The protocol is implemented once, in
 [`crates/boot-protocol`](https://github.com/aphid-ev/aphid-ev/tree/main/crates/boot-protocol).
-The bootloader in `ecus/bootloader` uses it, and so will the programming
-tool. The identifiers and error codes below are copied from that crate by
+The bootloader in `ecus/bootloader` uses it, and so does the programming
+device's side in `apps/manager`. The identifiers and error codes below are copied from that crate by
 hand, so check the crate when the two disagree.
 
 A bootloader that is already in an ECU can only be replaced with a debug
@@ -122,6 +122,33 @@ bootloader must never use ID 15.
    header is a block like any other, and the blocks may go in any order.
 5. The programming device sends **Start application**. The node checks
    the image again and starts it, or answers with error 7.
+
+## Finding the node {#probe}
+
+The programming device does not know when the node resets, and a node
+left in the bootloader by an interrupted update sends no wakeup frame. To
+find the node in both cases, the programming device sends a probe every
+100 ms: an **Erase flash** with the wrong key. A node in the bootloader
+refuses it with error 4 and erases nothing. A node in its wakeup window
+or its application ignores it.
+
+When a **Wakeup** from the node arrives, the programming device answers
+with **Catch bootloader** at once. The next probe then gets error 4, and
+the node is ready for **Erase flash**. Running an interrupted update again
+therefore finds the node in its bootloader and starts over.
+
+## Programming tool {#tool}
+
+The manager's command line flashes a sealed image into a node through
+the [[can-usb]]:
+
+```sh
+cargo run -p manager -- flash --node 0 can-echo.bin
+```
+
+It checks the image before it sends anything, waits up to 30 seconds for
+the node, and skips blocks that are all `0xff`. For `can-echo`,
+`just bootloader flash-echo-can` builds, seals and flashes it in one step.
 
 # Frames
 
@@ -273,8 +300,6 @@ block is closed with holes in it, and the CRC check rejects it.
 
 # Current limitations {#limitations}
 
-- No host tool sends the programming device's side of the protocol yet.
-  The `can-usb` command line tool only listens and sends test frames.
 - Every ECU's bootloader is built with node ID 0, so only one ECU can be
   on the bus while it is flashed.
 - Only `can-echo` links at the application offset and carries an image

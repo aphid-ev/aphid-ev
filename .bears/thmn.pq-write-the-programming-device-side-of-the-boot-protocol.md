@@ -1,10 +1,10 @@
 ---
 id: thmn.pq
 title: Write the programming device side of the boot protocol
-status: open
+status: done
 priority: P2
 created: "2026-11-22T09:23:11.662504263Z"
-updated: "2026-11-22T10:53:00.055997812Z"
+updated: "2026-11-23T20:23:30.171683759Z"
 tags:
   - manager
   - crates
