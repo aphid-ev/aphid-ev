@@ -126,9 +126,10 @@ fn init_clock(rcc: &mut RCC, pwr: &mut PWR, flash: &mut Flash) {
     // Set FLASH latency before increasing sysclk
     flash.set_latency(5);
 
-    // Enable crystal oscilaltor and wait for it to be stable
+    // Enable the crystal oscillator and wait for it to be stable. The PLL
+    // must not start from it before HSERDY is set.
     rcc.cr().modify(|_, w| w.hseon().set_bit());
-    while rcc.cr().read().hsirdy().is_not_ready() {}
+    while rcc.cr().read().hserdy().is_not_ready() {}
 
     // Configure PLL with HSE input
     //   PLL Source = HSE (16 MHz)
