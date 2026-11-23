@@ -59,7 +59,7 @@ executing as expected. The two communicate over a serial link.
   main contactors, enabled only while the
   [[safety#interlock|HV interlock loop]] is valid.
 - The [[bms|BMS]] controllers, not the VCM, switch the low side of the
-  contactor coils. See [[contactors#coil-control]].
+  contactor coils. See [[contactors#roles]].
 - The main MCU sends watchdog counters over the serial port.
 - The monitor MCU can disable the EV-CAN transceiver and, as a final
   option, reset the main MCU.

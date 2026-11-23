@@ -12,8 +12,12 @@ Both BMS controllers switch the low side of their main contactor coils;
 the front BMS also controls the precharge contactor. Each BMS reports pack
 status over CAN2.
 
-[[contactors#coil-control]] describes how the BMS and VCM share contactor
-control, and [[EV-CAN#vehicle-buses]] describes the CAN2 topology.
+The BMS does not decide when the contactors close or open. It drives its
+outputs as the VCM commands on CAN2 and opens them on its own only when the
+command or safe power is lost, or to protect its cells.
+[[contactors#roles]] describes how the BMS and VCM share contactor
+control, [[safety#cell-protection]] the limits the BMS acts on, and
+[[EV-CAN#vehicle-buses]] the CAN2 topology.
 
 Both BMS controllers have an always-on 12 V supply from the primary
 distribution box in the [[LV system#primary-distribution|LV system]]. A
@@ -55,8 +59,8 @@ from the low-voltage connector, so the board can keep them isolated:
 
 The BMS reports both voltages on CAN2. They agree once precharge is
 complete, and the VCM takes that decision from them; see
-[[contactors#precharge]]. A voltage on the output terminals while the
-contactors are open shows a welded contactor.
+[[contactors#closing]]. A voltage on the output terminals while only one
+contactor of the pack is closed shows that the other one has welded.
 
 Both packs wire the two voltage sense pairs. The current shunt is in the
 front pack, so only the front BMS uses its shunt input. The packs are in

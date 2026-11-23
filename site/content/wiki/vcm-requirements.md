@@ -109,7 +109,7 @@ distance between the mounting holes is **101.6 mm** (4″).
 > contactor, upper contactor and precharge outputs are stale: the
 > [[bms|BMS]] controllers now switch the low side of the contactor coils,
 > and the VCM only supplies the high side. See
-> [[contactors#coil-control]].
+> [[contactors#roles]].
 
 The connectors have the following pinout:
 

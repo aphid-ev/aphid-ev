@@ -67,6 +67,75 @@ The [[vcm]] and [[Monitor firmware]] pages describe the VCM side. The
 vehicle-level fault behaviour is described under
 [[vcm#operating-states|operating states]].
 
+# Fault reactions {#fault-reactions}
+
+The VCM main processor decides how to react to a fault. The monitor and
+the BMS controllers act on their own only for the faults they detect
+themselves. [[contactors#roles]] describes who switches what, and
+[[contactors#opening]] the two ways to open:
+
+- A controlled open first commands zero torque and zero charge current,
+  then waits until the current is below 5 A, or at most 1 s.
+- An immediate open commands every contactor open in the next 10 ms frame.
+
+Cutting safe power opens every contactor at once, whatever the current.
+
+Every fault latches. The VCM refuses to close the contactors again until
+the next key cycle, and clears the BMS trips with the fault clear bit only
+if the cause has gone. A key cycle is the VCM going to sleep and waking on
+the key or the charge cable. The monitor's latch clears the same way.
+
+| Fault | Detected by | Reaction |
+| --- | --- | --- |
+| HV interlock loop open | Monitor and VCM main | The monitor cuts safe power at once. The VCM main commands every output open. |
+| VCM main silent on the serial link for 100 ms | Monitor | The monitor cuts safe power. |
+| Monitor silent on the serial link for 100 ms | VCM main | Immediate open. |
+| Any other monitor fault, see [[Monitor firmware]] | Monitor | The monitor cuts safe power. |
+| Contactor command lost for 100 ms | BMS | That BMS opens its outputs and blocks, see [[contactors#bms-rules]]. |
+| BMS fast status lost for 100 ms | VCM main | Immediate open on both packs. |
+| A BMS not reporting 500 ms after wake | VCM main | No close. |
+| Safe power lost while closed | BMS | Each BMS switches its outputs off and blocks. The VCM main commands every output open. |
+| Safe power present before the monitor enabled it, or still present 100 ms after release | VCM main | No close. |
+| Welded contactor | VCM main | No close. The driver is warned. |
+| Precharge failed | VCM main | Every output open. Two retries 30 s apart, then latched. |
+| `V_out` more than 5 V below `V_stack` while closed | VCM main | Controlled open. A contactor or a connection has a high resistance. |
+| `V_link` and the BMS voltages more than 20 V apart for 1 s | VCM main | Recorded. The contactors stay closed, and the next close is refused. |
+| BMS open request, see [[#cell-protection]] | BMS | Controlled open. |
+| BMS trip, see [[#cell-protection]] | BMS | The BMS has opened its own outputs. The VCM main commands every output open on both packs. |
+
+## Cell protection {#cell-protection}
+
+Each BMS looks after its own cells. It estimates the state of charge and
+reports, every 100 ms, the charge and discharge current the pack can take.
+It lowers these limits as a cell approaches its voltage or temperature
+limits. The VCM keeps the inverter torque and the OBC current request
+within the lower limit of the two packs. The packs are in series, so the
+same current flows through both.
+
+A BMS reacts on two levels. Both are BMS parameters with the defaults
+below. The temperature defaults are to be checked against the cell
+datasheet.
+
+| Condition | Open request | Trip |
+| --- | --- | --- |
+| Highest cell voltage | above 4.15 V | above 4.25 V |
+| Lowest cell voltage | below 3.00 V | below 2.70 V |
+| Cell temperature while charging | outside 0 °C to 45 °C | above 65 °C |
+| Cell temperature while discharging | outside −20 °C to 55 °C | above 65 °C |
+| String current | more than 10 % above the reported limit for 1 s | above 350 A for 100 ms |
+| Measurement lost: isoSPI chain, shunt, or the front BMS current on the rear BMS | for 500 ms | |
+
+- **Open request.** The BMS sets the open request with a reason in its fast
+  status, and the VCM does a controlled open. If the VCM still commands an
+  output closed **1 s** after the request, the BMS opens its outputs itself
+  and trips.
+- **Trip.** The BMS opens its outputs at once and reports the reason. It
+  stays tripped until the VCM sends a fault clear with every output open.
+
+The trip limits are wide enough that they only act when the VCM has failed
+to react. They are the second channel for the cells, since the monitor
+cannot see CAN2.
+
 # Unintended acceleration or braking
 
 There is a lot of monitoring around making sure the car does not get any

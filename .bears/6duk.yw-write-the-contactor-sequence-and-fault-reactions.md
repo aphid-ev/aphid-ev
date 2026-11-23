@@ -1,10 +1,10 @@
 ---
 id: 6duk.yw
 title: Write the contactor sequence and fault reactions
-status: open
+status: done
 priority: P0
 created: "2026-11-22T10:53:14.253488727Z"
-updated: "2026-11-23T18:32:19.888355Z"
+updated: "2026-11-23T19:28:08.436391Z"
 tags:
   - manual
   - site
