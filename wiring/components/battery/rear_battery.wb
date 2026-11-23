@@ -1,7 +1,9 @@
 // Rear battery pack
 // 6 cell modules in series, BMS master, 2 main contactors (pos + neg),
 // plus a precharge contactor and resistor in parallel with the main
-// positive contactor.
+// positive contactor. Which pack gets the precharge circuit is not
+// decided; it depends on the space in each pack. It is drawn here until
+// then.
 
 use CellModule from "cell_module.wb";
 use BmsMaster  from "bms_master.wb";
@@ -187,5 +189,18 @@ view schematic "Rear Battery" {
         west:  iso_spi_l, iso_spi_h, cont_1_n, cont_3_n;
         east:  cont_2_n;
         south: b_pos, gnd, can_h, can_l;
+    }
+}
+
+// --- View: rear BMS I/O ---
+// Every port of the rear BMS controller with a stub naming what it
+// connects to inside the pack or where it leaves the pack.
+
+view schematic "Rear BMS I/O" {
+    grid: 20;
+
+    include bms at (20, 10) ports {
+        west: b_pos, gnd, can_h, can_l;
+        east: iso_spi_h, iso_spi_l, cont_1_n, cont_2_n, cont_3_n, shunt_p, shunt_n, pack_sense_p, pack_sense_n, out_sense_p, out_sense_n;
     }
 }

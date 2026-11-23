@@ -157,3 +157,17 @@ view schematic "Front Battery" {
         south: b_pos, gnd, can_h, can_l;
     }
 }
+
+// --- View: front BMS I/O ---
+// Every port of the front BMS controller with a stub naming what it
+// connects to inside the pack or where it leaves the pack. The starting
+// point for the I/O of the BMS board.
+
+view schematic "Front BMS I/O" {
+    grid: 20;
+
+    include bms at (20, 10) ports {
+        west: b_pos, gnd, can_h, can_l;
+        east: iso_spi_h, iso_spi_l, cont_1_n, cont_2_n, cont_3_n, shunt_p, shunt_n, pack_sense_p, pack_sense_n, out_sense_p, out_sense_n;
+    }
+}

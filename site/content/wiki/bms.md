@@ -19,6 +19,36 @@ Both BMS controllers have an always-on 12 V supply from the primary
 distribution box in the [[LV system#primary-distribution|LV system]], so
 they stay on while the car is off.
 
+# I/O
+
+The drawings show every port of each BMS controller in the wiring model and
+what it connects to inside its pack, or where it leaves the pack.
+
+![Schematic of the front BMS controller with every port and a label naming what it connects to](/static/generated/wiring/front_bms_i_o.svg#inline "Front BMS I/O")
+
+![Schematic of the rear BMS controller with every port and a label naming what it connects to](/static/generated/wiring/rear_bms_i_o.svg#inline "Rear BMS I/O")
+
+Each board has three high-voltage inputs on a connector of their own, apart
+from the low-voltage connector, so the board can keep them isolated:
+
+- A sense pair for the current shunt.
+- A voltage sense pair on the cell stack, before the contactors.
+- A voltage sense pair on the pack's output terminals, after the
+  contactors.
+
+The two voltages agree once precharge is complete, so the BMS can run
+precharge without the inverter being online. A voltage on the output
+terminals while the contactors are open shows a welded contactor.
+
+Which pack uses which input is not decided, so the model leaves them
+unconnected. The enclosure needs two separate connectors for this.
+
+Which pack gets the precharge contactor is not decided either. It depends
+on the space in each pack. This page and the
+[[contactors|contactors page]] name the front pack, and the model draws it
+in the rear pack on the rear BMS's third output. Every board has the third
+output, so the choice does not affect the board.
+
 # Packaging
 
 The pack-level BMS controllers are enclosed ECUs. The cell-monitoring front
