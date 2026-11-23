@@ -161,7 +161,7 @@ error code:
 
 | Code | Name | Meaning |
 | --- | --- | --- |
-| 0 | Overflow | Block data ran past the length in **Program block**, or that length exceeds 1792 |
+| 0 | Overflow | Block data ran past the length in **Program block**, or the block is empty, longer than 1792 bytes or does not fit in the application region |
 | 1 | Checksum | The assembled block did not match the CRC in **Program block** |
 | 2 | Header | The node could not build a response frame |
 | 3 | FdCan | The CAN peripheral rejected a transmission |
@@ -201,13 +201,17 @@ key other than `0x12345678` gets error 4 and erases nothing.
 | `offset: u32` | `len: u16` | `crc16: u16` |
 
 `offset` counts from the start of the application region. It must be a
-multiple of 8, the programming granularity of the flash. The node checks
-the offset when it writes the block, so error 5 arrives after the block
-data, not after this frame.
+multiple of 8, the programming granularity of the flash.
 
-`len` is the number of bytes in the block, at most 1792. That is 256
-sub-blocks of 7 bytes. The node uses `len` to tell when the block is
+`len` is the number of bytes in the block, from 1 to 1792. That is at most
+256 sub-blocks of 7 bytes. The node uses `len` to tell when the block is
 complete.
+
+The node checks the block against the application region as soon as this
+frame arrives. An offset that is not a multiple of 8 gets error 5. A
+block that is empty, longer than 1792 bytes or runs past the end of the
+region gets error 0. A refused block writes nothing, and the node ignores
+the block data that follows it.
 
 `crc16` is CRC-16/IBM-SDLC over the `len` bytes of the block. Its check
 value, the CRC of the ASCII string `123456789`, is `0x906e`. The node

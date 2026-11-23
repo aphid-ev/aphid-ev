@@ -52,7 +52,9 @@ pub const PROGRAM_ALIGNMENT: u32 = 8;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
-    /// Block data ran past the length given in **Program block**.
+    /// Block data ran past the length given in **Program block**, or the
+    /// block is empty, longer than [`MAX_BLOCK_LEN`] or does not fit in the
+    /// application region.
     Overflow = 0,
     /// The assembled block did not match the CRC in **Program block**.
     Checksum = 1,

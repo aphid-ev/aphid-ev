@@ -72,8 +72,14 @@ pub struct MemoryRegion {
 }
 
 impl MemoryRegion {
+    /// Only for an offset that `boot_protocol::check_program` has accepted
+    /// against [`MemoryRegion::len`]: the addition is not checked here.
     pub fn absolute_address(&self, offset: u32) -> u32 {
         self.start_address + offset
+    }
+
+    pub fn len(&self) -> u32 {
+        self.size
     }
 
     pub fn vector_table(&self) -> u32 {

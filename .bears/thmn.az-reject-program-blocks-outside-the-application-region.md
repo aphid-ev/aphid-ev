@@ -1,14 +1,15 @@
 ---
 id: thmn.az
 title: Reject Program blocks outside the application region
-status: open
+status: done
 priority: P1
 created: "2026-11-23T19:00:57.488056Z"
-updated: "2026-11-23T19:00:57.488056Z"
+updated: "2026-11-23T20:12:55.007772252Z"
 tags:
   - bootloader
   - crates
   - safety
+attempts: 1
 ---
 
 Found in the review of qqxt.6x/qqxt.da; carried over unchanged from the original bootloader.
