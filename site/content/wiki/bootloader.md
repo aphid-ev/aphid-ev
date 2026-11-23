@@ -176,6 +176,14 @@ arrives.
 The identifier carries no node ID, because `0x7ef` plus a node ID would
 collide with the catch frames at `0x7f0`.
 
+A node drops a response or wakeup frame that it cannot queue within
+100 ms. That happens when no other node acknowledges its frames, or when
+higher-priority traffic fills the bus for that long. A programming device
+that gets no response within its own timeout starts the update again from
+**Erase flash**. Sending **Program block** again is not enough, because
+flash that the lost block already wrote cannot be written twice without
+an erase.
+
 An empty frame means the command succeeded. A one-byte frame carries an
 error code:
 
@@ -189,6 +197,7 @@ error code:
 | 5 | Alignment | The block offset is not a multiple of 8 |
 | 6 | Program | The flash peripheral reported an erase or programming failure |
 | 7 | InvalidImage | **Start application** found no valid image |
+| 8 | Timeout | No block data arrived for 500 ms while the node collected a block |
 
 ## `0x7e0 + node` bootloader command
 
@@ -241,7 +250,10 @@ When `len` is not a multiple of 8, the node pads the last double word with
 `0xff`, which matches erased flash.
 
 While the node collects a block it ignores every frame except block data
-for itself. It cannot be interrupted until a sub-block reaches `len`.
+for itself, until a sub-block reaches `len`. If no block data for the node
+arrives for 500 ms, the node drops the block, writes nothing, answers
+with error 8 and waits for commands again. The 500 ms count from the last
+sub-block, so a long block that arrives without gaps never times out.
 
 ## `0x7d0 + node` block data
 

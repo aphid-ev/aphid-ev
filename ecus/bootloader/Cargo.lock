@@ -38,7 +38,6 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "fdcan",
- "nb 1.1.0",
  "panic-halt",
  "stm32g4",
 ]

@@ -5,18 +5,20 @@ pub mod app;
 mod can;
 mod crc;
 mod flash;
+mod ticks;
 
 use app::App;
 use boot_protocol::{
-    Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, WAKEUP_WINDOW_MS, check_program,
+    BLOCK_TIMEOUT_MS, Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, Timeout,
+    WAKEUP_WINDOW_MS, check_program,
 };
 use can::Can;
-use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
 use crc::Crc;
 use flash::{Flash, FlashLayout};
-use pac::{PWR, RCC, SCB, SYST};
+use pac::{PWR, RCC, SCB};
 use panic_halt as _;
+use ticks::Ticks;
 
 #[cfg(all(feature = "stm32g431cx", feature = "stm32g491xe"))]
 compile_error!("select exactly one chip feature: stm32g431cx or stm32g491xe");
@@ -79,7 +81,6 @@ fn main() -> ! {
     let mut rcc = p.RCC;
     let mut pwr = p.PWR;
     let mut gpiob = p.GPIOB;
-    let mut systick = cp.SYST;
     let mut scb = cp.SCB;
 
     let app = App::new(&FLASH_LAYOUT);
@@ -87,29 +88,28 @@ fn main() -> ! {
 
     init_clock(&mut rcc, &mut pwr, &mut flash);
 
+    let mut ticks = Ticks::new(cp.SYST);
     let mut crc = Crc::new(p.CRC, &mut rcc);
     let mut can = Can::new(p.FDCAN, &mut rcc, &mut gpiob);
 
     let mut state = State::Init;
     loop {
         state = match state {
-            State::Init => state_init(&mut can, &app, &mut crc),
-            State::Wait { valid } => state_wait(&mut can, &mut systick, valid),
-            State::Bootloader => state_bootloader(&mut can, &app),
-            State::Start => state_start(&mut can, &app, &mut crc),
-            State::Application => {
-                state_application(can, crc, &mut rcc, &mut systick, &mut scb, app)
-            }
+            State::Init => state_init(&mut can, &mut ticks, &app, &mut crc),
+            State::Wait { valid } => state_wait(&mut can, &mut ticks, valid),
+            State::Bootloader => state_bootloader(&mut can, &mut ticks, &app),
+            State::Start => state_start(&mut can, &mut ticks, &app, &mut crc),
+            State::Application => state_application(can, crc, ticks, &mut rcc, &mut scb, app),
             // Both of these answer the programmer, whether they worked or
             // not, so it is never left waiting on a command that finished.
             State::Erase => {
                 let result = app.erase(&mut flash).map_err(Error::from);
-                can.send(&Frame::response(result)).ok();
+                respond(&mut can, &mut ticks, result);
                 State::Bootloader
             }
             State::Write { offset, len, crc } => {
-                let result = state_write(&mut can, &mut flash, &app, offset, len, crc);
-                can.send(&Frame::response(result)).ok();
+                let result = state_write(&mut can, &mut ticks, &mut flash, &app, offset, len, crc);
+                respond(&mut can, &mut ticks, result);
                 State::Bootloader
             }
         };
@@ -164,11 +164,17 @@ fn init_clock(rcc: &mut RCC, pwr: &mut PWR, flash: &mut Flash) {
     while !rcc.cfgr().read().sws().is_pll() {}
 }
 
-fn state_init(can: &mut Can, app: &App, crc: &mut Crc) -> State {
+/// Sends a **Command response**. A response that cannot be queued is
+/// dropped: the programmer times out and asks again.
+fn respond(can: &mut Can, ticks: &mut Ticks, result: boot_protocol::Result<()>) {
+    can.send(&Frame::response(result), ticks).ok();
+}
+
+fn state_init(can: &mut Can, ticks: &mut Ticks, app: &App, crc: &mut Crc) -> State {
     let image = app.validate(crc);
 
     let wakeup = Frame::wakeup(NODE_ID, &image);
-    can.send(&wakeup).ok();
+    can.send(&wakeup, ticks).ok();
 
     State::Wait {
         valid: image.is_ok(),
@@ -177,38 +183,27 @@ fn state_init(can: &mut Can, app: &App, crc: &mut Crc) -> State {
 
 /// Without a valid image the node stays in the bootloader when the window
 /// closes, so it can still be flashed.
-fn state_wait(can: &mut Can, systick: &mut SYST, valid: bool) -> State {
-    let mut milliseconds = 0u32;
-
-    systick.set_clock_source(SystClkSource::Core);
-    systick.set_reload(144_000); // Will get 1ms tick @ 144 MHz SYSCLK
-    systick.clear_current();
-    systick.enable_counter();
+fn state_wait(can: &mut Can, ticks: &mut Ticks, valid: bool) -> State {
+    let mut window = Timeout::new(WAKEUP_WINDOW_MS);
 
     loop {
         if let Some(frame) = can.receive()
             && frame.is_catch(NODE_ID)
         {
-            systick.disable_counter();
             return State::Bootloader;
         };
 
-        if systick.has_wrapped() {
-            milliseconds += 1;
-
-            if milliseconds > WAKEUP_WINDOW_MS {
-                systick.disable_counter();
-                return if valid {
-                    State::Application
-                } else {
-                    State::Bootloader
-                };
-            }
+        if ticks.poll(&mut window) {
+            return if valid {
+                State::Application
+            } else {
+                State::Bootloader
+            };
         }
     }
 }
 
-fn state_bootloader(can: &mut Can, app: &App) -> State {
+fn state_bootloader(can: &mut Can, ticks: &mut Ticks, app: &App) -> State {
     loop {
         if let Some(frame) = can.receive() {
             match frame.as_command(NODE_ID) {
@@ -217,16 +212,12 @@ fn state_bootloader(can: &mut Can, app: &App) -> State {
                 Some(Ok(Command::Program { offset, len, crc })) => {
                     match check_program(offset, len, app.flash.application.len()) {
                         Ok(()) => return State::Write { offset, len, crc },
-                        Err(error) => {
-                            can.send(&Frame::response(Err(error))).ok();
-                        }
+                        Err(error) => respond(can, ticks, Err(error)),
                     }
                 }
                 // A command meant for us that we refuse, such as an erase
                 // carrying the wrong key.
-                Some(Err(error)) => {
-                    can.send(&Frame::response(Err(error))).ok();
-                }
+                Some(Err(error)) => respond(can, ticks, Err(error)),
                 None => {}
             }
         }
@@ -235,18 +226,22 @@ fn state_bootloader(can: &mut Can, app: &App) -> State {
 
 /// A valid image is started without a response, as before. An invalid one
 /// is refused, and the node stays in the bootloader.
-fn state_start(can: &mut Can, app: &App, crc: &mut Crc) -> State {
+fn state_start(can: &mut Can, ticks: &mut Ticks, app: &App, crc: &mut Crc) -> State {
     match app.validate(crc) {
         Ok(_) => State::Application,
         Err(_) => {
-            can.send(&Frame::response(Err(Error::InvalidImage))).ok();
+            respond(can, ticks, Err(Error::InvalidImage));
             State::Bootloader
         }
     }
 }
 
+/// Collects a block and writes it. A gap of [`BLOCK_TIMEOUT_MS`] between
+/// sub-blocks abandons the block, so a programmer that stops partway cannot
+/// leave the node deaf to commands.
 fn state_write(
     can: &mut Can,
+    ticks: &mut Ticks,
     flash: &mut Flash,
     app: &App,
     offset: u32,
@@ -254,14 +249,22 @@ fn state_write(
     crc: u16,
 ) -> boot_protocol::Result<()> {
     let mut block: Block<MAX_BLOCK_LEN> = Block::new(offset, len as usize)?;
+    let mut timeout = Timeout::new(BLOCK_TIMEOUT_MS);
 
     loop {
         if let Some(frame) = can.receive()
             && let Some(sub_block) = frame.as_block_data(NODE_ID)
-            && block.insert(&sub_block)?
         {
-            block.validate(crc)?;
-            break;
+            timeout.restart();
+
+            if block.insert(&sub_block)? {
+                block.validate(crc)?;
+                break;
+            }
+        }
+
+        if ticks.poll(&mut timeout) {
+            return Err(Error::Timeout);
         }
     }
 
@@ -276,21 +279,14 @@ fn state_write(
 fn state_application(
     can: Can,
     crc: Crc,
+    ticks: Ticks,
     rcc: &mut RCC,
-    systick: &mut SYST,
     scb: &mut SCB,
     app: App,
 ) -> ! {
     can.reset(rcc);
     crc.reset(rcc);
-
-    // SysTick is a core peripheral without a reset bit: clear what
-    // state_wait configured.
-    systick.disable_counter();
-    systick.disable_interrupt();
-    systick.set_reload(0);
-    systick.clear_current();
-    systick.set_clock_source(SystClkSource::External);
+    ticks.reset();
 
     app.bootload(scb)
 }

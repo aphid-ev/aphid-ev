@@ -15,10 +15,12 @@
 mod block;
 mod frame;
 pub mod image;
+mod timeout;
 
 pub use block::*;
 pub use frame::*;
 pub use image::{ImageError, ImageHeader, parse_version_part};
+pub use timeout::*;
 
 /// Sent by a node on startup. Carries no node ID in the identifier.
 pub const WAKEUP_ID: u16 = 0x7ff;
@@ -71,6 +73,9 @@ pub enum Error {
     /// **Start application** found no valid image, so the node stays in the
     /// bootloader.
     InvalidImage = 7,
+    /// No **Block data** arrived for [`BLOCK_TIMEOUT_MS`] while the node
+    /// collected a block. The block is dropped and nothing is written.
+    Timeout = 8,
 }
 
 impl Error {
@@ -85,6 +90,7 @@ impl Error {
             5 => Self::Alignment,
             6 => Self::Program,
             7 => Self::InvalidImage,
+            8 => Self::Timeout,
             _ => return None,
         })
     }
@@ -170,10 +176,10 @@ mod tests {
 
     #[test]
     fn error_codes_round_trip() {
-        for code in 0..=7 {
+        for code in 0..=8 {
             assert_eq!(Error::from_code(code).map(|e| e as u8), Some(code));
         }
-        assert_eq!(Error::from_code(8), None);
+        assert_eq!(Error::from_code(9), None);
     }
 
     #[test]

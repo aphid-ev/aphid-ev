@@ -1,13 +1,14 @@
 ---
 id: thmn.my
 title: Give the bootloader timeouts while it collects a block and sends a response
-status: open
+status: done
 priority: P2
 created: "2026-11-23T19:59:32.415509657Z"
-updated: "2026-11-23T19:59:32.415509657Z"
+updated: "2026-11-23T20:19:03.812270788Z"
 tags:
   - bootloader
   - crates
+attempts: 1
 ---
 
 Found in the review of the bootloader for thmn.am.

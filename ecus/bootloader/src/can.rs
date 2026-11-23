@@ -1,7 +1,8 @@
 use core::num::{NonZeroU8, NonZeroU16};
 
 use crate::pac::{FDCAN, FDCAN1, GPIOB, RCC};
-use boot_protocol::{Error, Frame, Result};
+use crate::ticks::Ticks;
+use boot_protocol::{Error, Frame, Result, SEND_TIMEOUT_MS, Timeout};
 use fdcan::{
     NormalOperationMode, ReceiveOverrun,
     config::NominalBitTiming,
@@ -9,7 +10,6 @@ use fdcan::{
     frame::{FrameFormat, RxFrameInfo, TxFrameHeader},
     id::{Id, StandardId},
 };
-use nb::block;
 
 struct CanInner {
     #[allow(dead_code)]
@@ -98,12 +98,24 @@ impl Can {
         }
     }
 
-    pub fn send(&mut self, frame: &Frame) -> Result<()> {
+    /// Queues a frame, or drops it after [`SEND_TIMEOUT_MS`] with a full
+    /// transmit queue. Blocking here instead would hang the node on a bus
+    /// where nobody acknowledges its frames.
+    pub fn send(&mut self, frame: &Frame, ticks: &mut Ticks) -> Result<()> {
         let header = header(frame).ok_or(Error::Header)?;
+        let mut timeout = Timeout::new(SEND_TIMEOUT_MS);
 
-        block!(self.fdcan.transmit(header, frame.data())).map_err(|_| Error::FdCan)?;
+        loop {
+            // A replaced lower-priority frame (`Ok(Some(()))`) is lost, which
+            // is the same as dropping it on a timeout.
+            if self.fdcan.transmit(header, frame.data()).is_ok() {
+                return Ok(());
+            }
 
-        Ok(())
+            if ticks.poll(&mut timeout) {
+                return Err(Error::FdCan);
+            }
+        }
     }
 }
 
