@@ -21,8 +21,8 @@ interfaces of the Gen 2 80 kW unit.
 # Electrical interface
 
 The inverter is driven by 12 V and draws around *TBD* A during full
-operation. Its wake or standby feed is always on and its other 12 V inputs
-come from the EV-system relay; see [[LV system#rear-distribution]].
+operation. Its B+ feed is always on and its ignition input comes from the
+EV-system relay; see [[LV system#rear-distribution]].
 
 The high voltage inputs contain a considerable amount of capacitance and
 should not be connected to the battery without pre-charging first.

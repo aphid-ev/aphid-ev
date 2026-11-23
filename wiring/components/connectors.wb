@@ -71,7 +71,8 @@ connector_type InverterControl "Inverter control 47+13p" {
     }
 }
 // Deutsch DT 4-way mated pair — the inline connector splitting the cab
-// loom's pedal branch (looms/pedal_branch.wb). One type per housing;
+// loom's pedal and brake branches (looms/pedal_branch.wb,
+// looms/brake_branch.wb). One type per housing;
 // an `inline` references both halves.
 
 connector_type Dt04_4p "Deutsch DT04-4P" {
@@ -94,9 +95,9 @@ connector_type Dt06_4s "Deutsch DT06-4S" {
     }
 }
 
-// Deutsch DT 3-way mated pair — the inline connector splitting the
-// separate brake loom off the cab harness (looms/brake_branch.wb). Three
-// conductors: EV-12V feed plus the two brake-sensor signals.
+// Deutsch DT 3-way mated pair — the inline connector splitting the key
+// and gear looms off the cab harness (looms/key_branch.wb,
+// looms/gear_branch.wb). Three conductors: a feed plus two signals.
 
 connector_type Dt04_3p "Deutsch DT04-3P" {
     part: "DT04-3P";

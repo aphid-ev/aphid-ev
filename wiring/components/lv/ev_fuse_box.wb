@@ -1,0 +1,154 @@
+// Rear EV fuse and relay box (Eaton Bussmann 15300 RTMR, micro relay base)
+// Sits in the engine compartment and distributes the MIDI-fused EV feed
+// from the primary box. It holds ten MINI fuses and five micro relays on
+// Metri-Pack 280 terminals. The feed lands on the M6 fuse stud, which is
+// bussed to one side of every fuse, so every fuse is always live. The stud
+// is rated 80 A and each terminal 30 A.
+//
+// A switched load goes fuse, then relay contact, then load. The link from
+// each fuse to its relay's pin 30 is a short jumper at the back of the box.
+// The relay stud is bussed to coil pin 86 of every relay and is fed from
+// the coil fuse by another jumper, so the VCM switches the coils on the
+// low side, pin 85. The EV and pump relays share one control line.
+//
+// To check on the 2D print: whether the relay stud also feeds pin 30.
+// The ports are not on connectors yet: the cavity layout is not fixed.
+
+component EvFuseBox {
+    part:         "15304-2-2-4";
+    manufacturer: "Eaton Bussmann";
+    description:  "15300 RTMR, 10 MINI fuses and 5 micro relays, bussed";
+
+    component Fuse {
+        pub port a "IN";
+        pub port b "OUT";
+    }
+
+    component Relay {
+        pub port coil_p "86";
+        pub port coil_n "85";
+        pub port com    "30";
+        pub port no     "87";
+    }
+
+    // Always-live loads.
+    f_vcm: Fuse "VCM 5 A";
+    f_inv: Fuse "Inverter B+ 10 A";
+    f_obc: Fuse "OBC sense";
+
+    // Relay coils, through the relay stud.
+    f_coils: Fuse "Relay coils";
+
+    // Switched loads, one fuse and one relay each.
+    f_ev_sig: Fuse "EV signals";
+    f_pump:   Fuse "Pump 10 A";
+    f_fan:    Fuse "Fan 10 A";
+
+    ev_relay:   Relay "EV relay";
+    pump_relay: Relay "Pump relay";
+    fan_relay:  Relay "Fan relay";
+
+    // M6 fuse stud: the feed from the primary box's EV MIDI fuse.
+    pub port feed "FEED";
+
+    // Always-live outputs.
+    pub port vcm "VCM";
+    pub port inv "INV B+";
+    pub port obc "OBC SENSE";
+
+    // Low-side coil controls from the VCM. EV CTRL pulls in the EV and
+    // pump relays together.
+    pub port ev_ctrl  "EV CTRL";
+    pub port fan_ctrl "FAN CTRL";
+
+    // Switched outputs. EV SIG is the low-current rail: inverter ignition,
+    // OBC IGCT and brake switch 2.
+    pub port ev_sig "EV SIG";
+    pub port pump   "PUMP";
+    pub port fan    "FAN";
+
+    // Fuse bus bar.
+    wire red 10 [feed, f_vcm.a, f_inv.a, f_obc.a, f_coils.a, f_ev_sig.a, f_pump.a, f_fan.a];
+
+    wire red 2.5 [f_vcm.b, vcm];
+    wire red 2.5 [f_inv.b, inv];
+    wire red 1.0 [f_obc.b, obc];
+
+    // Coil fuse to the relay stud, and its bus bar to every pin 86.
+    wire red 0.5 [f_coils.b, ev_relay.coil_p, pump_relay.coil_p, fan_relay.coil_p];
+
+    // Jumpers from each fuse to its relay, and the switched outputs.
+    wire red 1.0 [f_ev_sig.b,    ev_relay.com];
+    wire red 1.0 [ev_relay.no,   ev_sig];
+    wire red 1.5 [f_pump.b,      pump_relay.com];
+    wire red 1.5 [pump_relay.no, pump];
+    wire red 2.5 [f_fan.b,       fan_relay.com];
+    wire red 2.5 [fan_relay.no,  fan];
+
+    wire blue 0.5 [ev_ctrl,  ev_relay.coil_n, pump_relay.coil_n];
+    wire blue 0.5 [fan_ctrl, fan_relay.coil_n];
+}
+
+// --- View: rear EV fuse box ---
+// The fuse bus on the left. The always-live fuses and the coil fuse are at
+// the top; below them each switched load has its fuse and its relay.
+
+view schematic "Rear EV fuse box" {
+    grid: 20;
+
+    enclosure {
+        feed     at (west, 12);
+        vcm      at (east, 2);
+        inv      at (east, 7);
+        obc      at (east, 12);
+        ev_sig   at (east, 26);
+        ev_ctrl  at (east, 30);
+        pump     at (east, 34);
+        fan      at (east, 42);
+        fan_ctrl at (east, 46);
+    }
+
+    include f_vcm at (12, 2) ports {
+        west: a;
+        east: b;
+    }
+    include f_inv at (12, 7) ports {
+        west: a;
+        east: b;
+    }
+    include f_obc at (12, 12) ports {
+        west: a;
+        east: b;
+    }
+    include f_coils at (12, 17) ports {
+        west: a;
+        east: b;
+    }
+
+    include f_ev_sig at (12, 26) ports {
+        west: a;
+        east: b;
+    }
+    include ev_relay at (30, 25) ports {
+        west: coil_p, com;
+        east: coil_n, no;
+    }
+
+    include f_pump at (12, 34) ports {
+        west: a;
+        east: b;
+    }
+    include pump_relay at (30, 33) ports {
+        west: coil_p, com;
+        east: coil_n, no;
+    }
+
+    include f_fan at (12, 42) ports {
+        west: a;
+        east: b;
+    }
+    include fan_relay at (30, 41) ports {
+        west: coil_p, com;
+        east: coil_n, no;
+    }
+}
