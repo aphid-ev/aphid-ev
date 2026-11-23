@@ -13,10 +13,13 @@ listed in the `justfile`.
 `can-echo/` is a minimal application for testing a flash over CAN. It links
 at the application offset, `0x08002000`, and echoes every frame it receives,
 so a successful flash shows up on the bus. It is its own cargo workspace.
+`build-echo` seals its image header with `tools/boot-image` and writes the
+raw image next to the ELF as `can-echo.bin`. The bootloader only starts a
+sealed image.
 
 ```sh
 just bootloader build <feature> <target>   # one chip
-just bootloader build-echo                 # the test application
+just bootloader build-echo                 # the test application, sealed
 just bootloader ci                         # fmt, lint and build all of it
 ```
 

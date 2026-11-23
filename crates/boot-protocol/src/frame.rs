@@ -1,6 +1,6 @@
 use crate::{
-    BLOCK_DATA_BASE_ID, CATCH_BASE_ID, COMMAND_BASE_ID, ERASE_KEY, Error, NodeId, RESPONSE_ID,
-    Result, SUB_BLOCK_LEN, SemVer, WAKEUP_ID,
+    BLOCK_DATA_BASE_ID, CATCH_BASE_ID, COMMAND_BASE_ID, ERASE_KEY, Error, ImageError, NodeId,
+    RESPONSE_ID, Result, SUB_BLOCK_LEN, SemVer, WAKEUP_ID,
 };
 
 /// A classic CAN data frame with a standard identifier, the only kind the
@@ -40,12 +40,47 @@ impl Frame {
         &self.data[..self.len]
     }
 
-    /// **Wakeup**, sent by a node on startup.
-    pub fn wakeup(node: NodeId, version: &SemVer) -> Self {
+    /// **Wakeup**, sent by a node on startup: the result of checking its
+    /// application image. The version reads 0.0.0 when the image is invalid.
+    pub fn wakeup(node: NodeId, image: &core::result::Result<SemVer, ImageError>) -> Self {
+        let (version, status) = match image {
+            Ok(version) => (*version, 0),
+            Err(error) => (SemVer::NONE, *error as u8),
+        };
+
         Self::fixed(
             WAKEUP_ID,
-            [node.get(), version.major, version.minor, version.patch],
+            [
+                node.get(),
+                version.major,
+                version.minor,
+                version.patch,
+                status,
+            ],
         )
+    }
+
+    /// Decodes a **Wakeup**, as the programming device sees it. `None` for
+    /// any other frame, a node ID above 15 or an unknown status.
+    pub fn as_wakeup(&self) -> Option<(NodeId, core::result::Result<SemVer, ImageError>)> {
+        let [node, major, minor, patch, status] = *self.data() else {
+            return None;
+        };
+
+        if self.id != WAKEUP_ID {
+            return None;
+        }
+
+        let image = match status {
+            0 => Ok(SemVer {
+                major,
+                minor,
+                patch,
+            }),
+            code => Err(ImageError::from_code(code)?),
+        };
+
+        Some((NodeId::new(node)?, image))
     }
 
     /// **Catch bootloader**, sent by the programming device.
@@ -213,16 +248,48 @@ mod tests {
     }
 
     #[test]
-    fn wakeup_carries_node_and_version() {
+    fn wakeup_carries_node_version_and_status() {
         let version = SemVer {
             major: 1,
             minor: 2,
             patch: 3,
         };
-        let frame = Frame::wakeup(node(5), &version);
+        let frame = Frame::wakeup(node(5), &Ok(version));
 
         assert_eq!(frame.id(), 0x7ff);
-        assert_eq!(frame.data(), &[5, 1, 2, 3]);
+        assert_eq!(frame.data(), &[5, 1, 2, 3, 0]);
+        assert_eq!(frame.as_wakeup(), Some((node(5), Ok(version))));
+    }
+
+    #[test]
+    fn wakeup_without_a_valid_image_reports_why() {
+        for error in [
+            ImageError::Missing,
+            ImageError::Length,
+            ImageError::Checksum,
+        ] {
+            let frame = Frame::wakeup(node(2), &Err(error));
+
+            assert_eq!(frame.data(), &[2, 0, 0, 0, error as u8]);
+            assert_eq!(frame.as_wakeup(), Some((node(2), Err(error))));
+        }
+    }
+
+    #[test]
+    fn other_frames_are_not_wakeups() {
+        assert_eq!(Frame::new(0x7ff, &[0, 1, 2, 3]).unwrap().as_wakeup(), None);
+        assert_eq!(
+            Frame::new(0x7fe, &[0, 1, 2, 3, 0]).unwrap().as_wakeup(),
+            None
+        );
+        assert_eq!(
+            Frame::new(0x7ff, &[0, 1, 2, 3, 9]).unwrap().as_wakeup(),
+            None
+        );
+        assert_eq!(
+            Frame::new(0x7ff, &[16, 1, 2, 3, 0]).unwrap().as_wakeup(),
+            None
+        );
     }
 
     #[test]
@@ -246,7 +313,7 @@ mod tests {
         assert_eq!(Frame::response(Err(Error::Checksum)).data(), &[1]);
         assert_eq!(Frame::response(Ok(())).id(), 0x7ef);
 
-        for result in [Ok(()), Err(Error::Overflow), Err(Error::Program)] {
+        for result in [Ok(()), Err(Error::Overflow), Err(Error::InvalidImage)] {
             assert_eq!(Frame::response(result).as_response(), Some(result));
         }
     }

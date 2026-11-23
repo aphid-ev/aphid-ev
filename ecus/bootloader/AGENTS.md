@@ -33,6 +33,14 @@ In addition to `ecus/AGENTS.md`.
   (`can-echo/memory.x` among them). An application linked at `0x08000000`
   still gets written to the application region, but its vector table points
   into the bootloader.
+- The image header is part of that contract: `HEADER_OFFSET` in
+  `crates/boot-protocol/src/image.rs`, the `.image_header` section and
+  `_stext` in each application's `memory.x`, and the image tool
+  `tools/boot-image`. An image that was not sealed by the tool fails
+  validation, and the node stays in the bootloader.
+- Image validation runs on every reset, before the wakeup frame. Code on
+  that path must not panic: `panic-halt` would stop the node before it can
+  be reached over CAN, on every reset.
 - The clock setup duplicates the ECU firmware's: 16 MHz HSE, 144 MHz
   sysclk, 48 MHz FDCAN. The bootloader sets five flash wait states where
   embassy computes four, which is safe but not identical.

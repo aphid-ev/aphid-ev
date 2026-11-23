@@ -83,6 +83,14 @@ impl MemoryRegion {
     pub fn reset_handler(&self) -> *const u32 {
         self.start_address as *const u32
     }
+
+    /// The region's flash contents, for checking the image in it.
+    pub fn as_slice(&self) -> &[u8] {
+        // The region is memory-mapped flash that exists on every chip the
+        // layout is built for, and only the flash peripheral changes it: no
+        // reference into it is held across an erase or write.
+        unsafe { core::slice::from_raw_parts(self.start_address as *const u8, self.size as usize) }
+    }
 }
 
 pub struct PageIterator {

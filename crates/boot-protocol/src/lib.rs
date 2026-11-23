@@ -6,17 +6,19 @@
 //! existing frame means.
 //!
 //! Everything here is plain data and decoding. The bootloader moves [`Frame`]s
-//! between this crate and its CAN peripheral, and writes assembled [`Block`]s
-//! to flash.
+//! between this crate and its CAN peripheral, writes assembled [`Block`]s to
+//! flash, and checks the application [`image`] before it starts it.
 
 // Tests link the standard test harness, so std is only excluded otherwise.
 #![cfg_attr(not(test), no_std)]
 
 mod block;
 mod frame;
+pub mod image;
 
 pub use block::*;
 pub use frame::*;
+pub use image::{ImageError, ImageHeader, parse_version_part};
 
 /// Sent by a node on startup. Carries no node ID in the identifier.
 pub const WAKEUP_ID: u16 = 0x7ff;
@@ -64,6 +66,9 @@ pub enum Error {
     Alignment = 5,
     /// The flash peripheral reported an erase or programming failure.
     Program = 6,
+    /// **Start application** found no valid image, so the node stays in the
+    /// bootloader.
+    InvalidImage = 7,
 }
 
 impl Error {
@@ -77,6 +82,7 @@ impl Error {
             4 => Self::InvalidKey,
             5 => Self::Alignment,
             6 => Self::Program,
+            7 => Self::InvalidImage,
             _ => return None,
         })
     }
@@ -106,12 +112,22 @@ impl NodeId {
     }
 }
 
-/// An application version, as reported in the wakeup frame.
+/// An application version, from its image header and reported in the wakeup
+/// frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SemVer {
     pub major: u8,
     pub minor: u8,
     pub patch: u8,
+}
+
+impl SemVer {
+    /// What **Wakeup** reports when the node has no valid image.
+    pub const NONE: Self = Self {
+        major: 0,
+        minor: 0,
+        patch: 0,
+    };
 }
 
 #[cfg(test)]
@@ -152,10 +168,10 @@ mod tests {
 
     #[test]
     fn error_codes_round_trip() {
-        for code in 0..=6 {
+        for code in 0..=7 {
             assert_eq!(Error::from_code(code).map(|e| e as u8), Some(code));
         }
-        assert_eq!(Error::from_code(7), None);
+        assert_eq!(Error::from_code(8), None);
     }
 
     #[test]
