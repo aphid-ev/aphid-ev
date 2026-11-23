@@ -4,11 +4,12 @@ title: Model every ECU's connectors and pins in the wiring model
 status: open
 priority: P1
 created: "2026-11-22T10:53:27.308439893Z"
-updated: "2026-11-22T10:53:27.308439893Z"
+updated: "2026-11-23T08:21:35.700537Z"
 tags:
   - wiring
 depends_on:
   - 6duk.w3
+  - 6duk.hj
 ---
 
 ## Summary
