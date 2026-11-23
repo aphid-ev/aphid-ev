@@ -45,6 +45,14 @@ flash-echo: build-echo
     probe-rs download --chip STM32G431CB --connect-under-reset {{ echo }}
     probe-rs reset --chip STM32G431CB
 
+# Needs the bootloader on the chip and the CAN/USB interface on this
+# computer. Reset the board when the tool says so.
+#
+# Flash the sealed can-echo over CAN with the manager's command line
+[working-directory('../..')]
+flash-echo-can: build-echo
+    cargo run --quiet -p manager -- flash "{{ echo }}.bin"
+
 # Format check, lint, build and seal can-echo
 ci-echo: _ci-echo (_seal echo)
 
