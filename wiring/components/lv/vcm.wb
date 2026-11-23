@@ -56,11 +56,17 @@ component Vcm {
         pub port crank "CRANK" pin 2;
     }
 
-    // Gear selector — momentary R/D requests. Accepted only on a press edge
-    // with the brake applied and the vehicle stopped; otherwise neutral.
-    connector gear "Gear 2p" {
-        pub port r "R" pin 1;
-        pub port d "D" pin 2;
+    // Gear selector — two complementary switch lines per direction from the
+    // sprung lever (1 normally open, 2 normally closed). Each pull steps the
+    // state along R, N, D. A step into D or R is accepted only with the
+    // brake applied and the vehicle stopped. The parking brake switch is a
+    // warning input.
+    connector gear "Gear 5p" {
+        pub port d1         "D1"       pin 1;
+        pub port d2         "D2"       pin 2;
+        pub port r1         "R1"       pin 3;
+        pub port r2         "R2"       pin 4;
+        pub port park_brake "PARK BRK" pin 5;
     }
 
     // AC charging — proximity pilot from the charge port (cable detection),

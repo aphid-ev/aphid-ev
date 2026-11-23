@@ -95,9 +95,32 @@ connector_type Dt06_4s "Deutsch DT06-4S" {
     }
 }
 
+// Deutsch DT 6-way mated pair — the inline connector splitting the gear
+// loom off the cab harness (looms/gear_branch.wb). Cavities 1 to 3 are on
+// one row and 6 to 4 face them on the other.
+
+connector_type Dt04_6p "Deutsch DT04-6P" {
+    part: "DT04-6P";
+
+    layout grid {
+        rows:      2;
+        cols:      3;
+        numbering: clockwise;
+    }
+}
+
+connector_type Dt06_6s "Deutsch DT06-6S" {
+    part: "DT06-6S";
+
+    layout grid {
+        rows:      2;
+        cols:      3;
+        numbering: clockwise;
+    }
+}
+
 // Deutsch DT 3-way mated pair — the inline connector splitting the key
-// and gear looms off the cab harness (looms/key_branch.wb,
-// looms/gear_branch.wb). Three conductors: a feed plus two signals.
+// loom off the cab harness (looms/key_branch.wb). Three conductors: a feed plus two signals.
 
 connector_type Dt04_3p "Deutsch DT04-3P" {
     part: "DT04-3P";

@@ -1,14 +1,19 @@
 // Gear lever
-// A shift-by-wire selector with two momentary buttons. A fused 12 V feed
-// comes in on FEED; pressing R or D switches it through to that line. Both
-// go straight to the VCM, which edge-detects a press and only accepts a
-// direction change when the brake is applied and the vehicle is stopped
-// (no button pressed = neutral).
+// The Beetle's original lever in a new mounting box, sprung to centre.
+// Pushing it forward asks for a step toward R and pulling it back a step
+// toward D, the order of a conventional automatic. Each direction has two
+// microswitches wired as a complementary pair: switch 1 is normally open
+// and switch 2 normally closed, both fed from FEED. At rest the pair reads
+// (low, high) and when the lever is moved (high, low).
+// Any other reading is a fault: a lost feed, an open wire or a short.
+// All four lines go straight to the VCM, which keeps the R/N/D state.
 
 component GearLever {
-    connector x1 "Shifter 3p" {
+    connector x1 "Shifter 5p" {
         pub port feed "FEED" pin 1; // fused 12 V feed in
-        pub port r    "R"    pin 2; // reverse request (momentary)
-        pub port d    "D"    pin 3; // drive request (momentary)
+        pub port d1   "D1"   pin 2; // toward D, normally open
+        pub port d2   "D2"   pin 3; // toward D, normally closed
+        pub port r1   "R1"   pin 4; // toward R, normally open
+        pub port r2   "R2"   pin 5; // toward R, normally closed
     }
 }
