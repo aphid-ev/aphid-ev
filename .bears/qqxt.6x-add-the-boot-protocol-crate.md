@@ -1,10 +1,10 @@
 ---
 id: qqxt.6x
 title: Add the boot protocol crate
-status: review
+status: done
 priority: P2
 created: "2026-11-22T09:09:55.359253030Z"
-updated: "2026-11-22T09:14:52.451306173Z"
+updated: "2026-11-23T19:00:21.389329Z"
 tags:
   - crates
   - bootloader

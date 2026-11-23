@@ -2,10 +2,10 @@
 id: qqxt
 title: Bring the can-interface repository into the monorepo
 type: epic
-status: open
+status: done
 priority: P1
 created: "2026-11-22T09:09:49.678727167Z"
-updated: "2026-11-22T09:09:49.678727167Z"
+updated: "2026-11-23T19:00:21.453212Z"
 tags:
   - can-usb
   - bootloader

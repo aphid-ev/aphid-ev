@@ -1,10 +1,10 @@
 ---
 id: qqxt.3u
 title: Add the CAN/USB wire protocol crate
-status: review
+status: done
 priority: P2
 created: "2026-11-22T09:09:55.343059385Z"
-updated: "2026-11-22T09:11:29.534647702Z"
+updated: "2026-11-23T19:00:21.357341Z"
 tags:
   - crates
   - can-usb

@@ -1,10 +1,10 @@
 ---
 id: qqxt.79
 title: Move the CAN/USB firmware and host library
-status: review
+status: done
 priority: P2
 created: "2026-11-22T09:10:01.396537905Z"
-updated: "2026-11-22T09:13:09.896743097Z"
+updated: "2026-11-23T19:00:21.374349Z"
 tags:
   - can-usb
 depends_on:

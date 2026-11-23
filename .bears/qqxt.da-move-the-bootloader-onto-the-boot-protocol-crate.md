@@ -1,10 +1,10 @@
 ---
 id: qqxt.da
 title: Move the bootloader onto the boot protocol crate
-status: review
+status: done
 priority: P2
 created: "2026-11-22T09:10:01.412141309Z"
-updated: "2026-11-22T09:18:26.577949981Z"
+updated: "2026-11-23T19:00:21.402047Z"
 tags:
   - bootloader
 depends_on:

@@ -1,10 +1,10 @@
 ---
 id: ncmh.a6
 title: Move the VCM and BMS master KiCad projects
-status: review
+status: done
 priority: P2
 created: "2026-11-22T10:15:18.585240295Z"
-updated: "2026-11-22T10:22:09.454571629Z"
+updated: "2026-11-23T19:00:21.505024Z"
 tags:
   - vcm
   - bms

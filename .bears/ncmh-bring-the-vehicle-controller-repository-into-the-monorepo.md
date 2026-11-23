@@ -2,10 +2,10 @@
 id: ncmh
 title: Bring the vehicle-controller repository into the monorepo
 type: epic
-status: open
+status: done
 priority: P1
 created: "2026-11-22T10:15:03.095799301Z"
-updated: "2026-11-22T10:15:03.095799301Z"
+updated: "2026-11-23T19:00:21.520190Z"
 tags:
   - vcm
   - bms

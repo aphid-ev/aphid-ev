@@ -1,10 +1,10 @@
 ---
 id: ncmh.pg
 title: Add minimal embassy firmware for the VCM main and monitor MCUs
-status: review
+status: done
 priority: P2
 created: "2026-11-22T10:15:18.565983342Z"
-updated: "2026-11-22T10:21:06.041403770Z"
+updated: "2026-11-23T19:00:21.493947Z"
 tags:
   - vcm
 depends_on:

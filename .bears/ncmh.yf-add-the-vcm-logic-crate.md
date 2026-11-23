@@ -1,10 +1,10 @@
 ---
 id: ncmh.yf
 title: Add the VCM logic crate
-status: review
+status: done
 priority: P2
 created: "2026-11-22T10:15:10.075791293Z"
-updated: "2026-11-22T10:19:45.407446621Z"
+updated: "2026-11-23T19:00:21.482377Z"
 tags:
   - crates
   - vcm

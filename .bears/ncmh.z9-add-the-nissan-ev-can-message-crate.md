@@ -1,10 +1,10 @@
 ---
 id: ncmh.z9
 title: Add the Nissan EV-CAN message crate
-status: review
+status: done
 priority: P2
 created: "2026-11-22T10:15:10.057267724Z"
-updated: "2026-11-22T10:18:32.656954563Z"
+updated: "2026-11-23T19:00:21.466092Z"
 tags:
   - crates
   - vcm
