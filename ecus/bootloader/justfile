@@ -26,22 +26,40 @@ ci-bootloader:
         cargo build --release --no-default-features --features "$feature" --target "$target"
     done
 
-# Build the can-echo test application
+# The linked can-echo ELF. The image tool seals it in place and writes the
+# raw image for flashing over CAN next to it, as can-echo.bin.
+echo := source_directory() / 'can-echo/target/thumbv7em-none-eabi/release/can-echo'
+
+# Build the can-echo test application and seal its image
+build-echo: _build-echo (_seal echo)
+
 [working-directory('can-echo')]
-build-echo:
+_build-echo:
     cargo build --release
 
-# Flash can-echo through probe-rs, at the application offset
-[working-directory('can-echo')]
-flash-echo:
-    cargo run --release
+# The bootloader must already be on the chip: it starts can-echo after its
+# wakeup window, once it has checked the sealed header.
+#
+# Flash the sealed can-echo through probe-rs, at the application offset
+flash-echo: build-echo
+    probe-rs download --chip STM32G431CB --connect-under-reset {{ echo }}
+    probe-rs reset --chip STM32G431CB
 
-# Format check, lint and build can-echo
+# Format check, lint, build and seal can-echo
+ci-echo: _ci-echo (_seal echo)
+
 [working-directory('can-echo')]
-ci-echo:
+_ci-echo:
     cargo fmt --all --check
     cargo clippy --release -- -D warnings
     cargo build --release
+
+# Fill in the image header of a linked application ELF. The tool is a host
+# workspace member, so it runs from the repository root: run from here, the
+# bootloader's cargo config would build it for the MCU.
+[working-directory('../..')]
+_seal elf:
+    cargo run --quiet -p boot-image -- "{{ elf }}"
 
 # The bootloader for every family, and can-echo
 ci-firmware: ci-bootloader ci-echo

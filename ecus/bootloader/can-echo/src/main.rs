@@ -3,7 +3,8 @@
 //! running, since it echoes back every frame it receives.
 //!
 //! It links at the application offset rather than the start of flash — see
-//! memory.x — so it only runs when started by the bootloader.
+//! memory.x — so it only runs when started by the bootloader, and only once
+//! the image tool has sealed its header.
 
 #![no_std]
 #![no_main]
@@ -15,6 +16,10 @@ use embassy_stm32::can::{
 use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, bind_interrupts, peripherals::*};
 use panic_halt as _;
+
+// The header the bootloader checks before it starts this image, at the
+// offset memory.x reserves for it.
+boot_protocol::image_header!();
 
 bind_interrupts!(struct CanIrqs {
     FDCAN1_IT0 => IT0InterruptHandler<FDCAN1>;

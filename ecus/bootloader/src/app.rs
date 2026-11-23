@@ -1,25 +1,26 @@
+use crate::crc::Crc;
 use crate::flash::{self, Flash, FlashLayout};
 use crate::pac::SCB;
-use boot_protocol::{Block, SemVer};
+use boot_protocol::{Block, ImageError, SemVer, image};
 use cortex_m::asm;
 
 pub struct App {
-    pub version: SemVer,
     pub flash: &'static FlashLayout,
 }
 
 impl App {
     pub fn new(flash: &'static FlashLayout) -> Self {
-        // TODO: Read info from app
-        let version = SemVer {
-            major: 1,
-            minor: 0,
-            patch: 0,
-        };
-
-        Self { version, flash }
+        Self { flash }
     }
 
+    /// Checks the image in the application region. Run it again after every
+    /// update: the result describes the flash as it is now.
+    pub fn validate(&self, crc: &mut Crc) -> Result<SemVer, ImageError> {
+        image::validate(self.flash.application.as_slice(), crc)
+    }
+
+    /// Starts the application. Only call this with an image that `validate`
+    /// has just accepted.
     pub fn bootload(self, scb: &mut SCB) -> ! {
         unsafe {
             // Relocate vector table

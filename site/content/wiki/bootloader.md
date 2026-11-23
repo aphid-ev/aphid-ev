@@ -44,6 +44,43 @@ The bootloader does not reset the clocks before the jump. The application
 starts with the system clock at 144 MHz from the 16 MHz crystal and the
 FDCAN clock at 48 MHz.
 
+# Image header {#image-header}
+
+Every application carries a 16-byte header at offset `0x200` in its image,
+right after the vector table. The bootloader checks the image against it
+before it starts the application. The fields are little-endian.
+
+| Offset | Size | Field | Value |
+| --- | --- | --- | --- |
+| `0x200` | 4 | Magic | `AEVI` in ASCII, `0x49564541` as a word |
+| `0x204` | 4 | Length | Bytes from the start of the image to its end, a multiple of 4 |
+| `0x208` | 4 | CRC | CRC-32 over the first `length` bytes of the image, without these 4 |
+| `0x20c` | 3 | Version | Major, minor and patch |
+| `0x20f` | 1 | Reserved | `0xff` |
+
+The CRC is CRC-32/ISO-HDLC, the CRC-32 of zlib. Its check value, the CRC
+of the ASCII string `123456789`, is `0xcbf43926`. The bootloader computes
+it with the CRC unit of the STM32G4.
+
+The image is valid when the magic matches, the length is at least `0x210`
+and fits in the application region, and the CRC matches. Without a valid
+image the node stays in the bootloader. It does not start the application
+when the wakeup window closes, and it refuses **Start application**.
+
+An update that stops partway leaves part of the image erased, so its CRC
+does not match. **Erase flash** removes the header with the first page,
+so the image is invalid from the moment an update starts.
+
+The application reserves the header with `boot_protocol::image_header!()`,
+which takes the version from the application's `Cargo.toml`. Its
+`memory.x` places the `.image_header` section at `0x200` and fills the
+gap after the vector table with `0xff`. `ecus/bootloader/can-echo` shows
+the setup. After linking, the image tool `tools/boot-image` fills in the
+length and the CRC. It writes the sealed header back into the ELF, for
+flashing with a debug probe, and writes the raw image for flashing over
+CAN. An image flashed without the tool still holds `0xffffffff` in both
+fields, and the bootloader rejects it.
+
 # Node IDs {#node-ids}
 
 Each node has an ID from 0 to 15. The per-node identifiers below add the
@@ -62,21 +99,27 @@ bootloader must never use ID 15.
 
 # Programming sequence
 
-1. The node sends **Wakeup** when it starts, then waits 500 ms.
+1. The node checks its image, sends **Wakeup** with the result, then
+   waits 500 ms.
 2. The programming device answers with **Catch bootloader** inside that
-   window. Otherwise the node starts its application.
+   window. Otherwise the node starts its application if the image is
+   valid, and stays in the bootloader if it is not. A node that stays in
+   the bootloader takes commands without a catch.
 3. The programming device sends **Erase flash** and waits for the
    **Command response**.
 4. For each block, the programming device sends **Program block**, then
    the **Block data** frames that cover the block, then waits for the
    **Command response**.
-5. The programming device sends **Start application**.
+   The image is sealed before it is sent, so the block that holds the
+   header is a block like any other, and the blocks may go in any order.
+5. The programming device sends **Start application**. The node checks
+   the image again and starts it, or answers with error 7.
 
 # Frames
 
 | Identifier | Frame | Sent by | DLC |
 | --- | --- | --- | --- |
-| `0x7ff` | Wakeup | Node | 4 |
+| `0x7ff` | Wakeup | Node | 5 |
 | `0x7f0` + node | Catch bootloader | Programming device | 0 |
 | `0x7ef` | Command response | Node | 0 or 1 |
 | `0x7e0` + node | Bootloader command | Programming device | 0, 4 or 8 |
@@ -87,9 +130,19 @@ bootloader must never use ID 15.
 The node sends this frame once when it starts. It then waits 500 ms for
 **Catch bootloader** before it starts the application.
 
-| Byte 0 | Byte 1 | Byte 2 | Byte 3 |
-| --- | --- | --- | --- |
-| `node_id` | Version major | Version minor | Version patch |
+| Byte 0 | Byte 1 | Byte 2 | Byte 3 | Byte 4 |
+| --- | --- | --- | --- | --- |
+| `node_id` | Version major | Version minor | Version patch | Image status |
+
+The version comes from the image header. It reads 0.0.0 when the image is
+not valid. The image status says why:
+
+| Status | Name | Meaning |
+| --- | --- | --- |
+| 0 | Valid | The image passed the check, and the node starts it when the window closes |
+| 1 | Missing | No header magic. The region is erased, or the image was built without a header |
+| 2 | Length | The length is not sealed, is shorter than `0x210`, does not fit in the region or is not a multiple of 4 |
+| 3 | Checksum | The image does not match its CRC, usually after an interrupted update |
 
 ## `0x7f0 + node` catch bootloader
 
@@ -115,6 +168,7 @@ error code:
 | 4 | InvalidKey | **Erase flash** carried the wrong key |
 | 5 | Alignment | The block offset is not a multiple of 8 |
 | 6 | Program | The flash peripheral reported an erase or programming failure |
+| 7 | InvalidImage | **Start application** found no valid image |
 
 ## `0x7e0 + node` bootloader command
 
@@ -123,7 +177,9 @@ ignored and gets no response.
 
 ### Start application
 
-`dlc = 0`. The node starts the application.
+`dlc = 0`. The node checks the image again. With a valid image it starts
+the application and sends no response. Otherwise it answers with error 7
+and stays in the bootloader.
 
 ### Erase flash
 
@@ -185,7 +241,6 @@ block is closed with holes in it, and the CRC check rejects it.
   The `can-usb` command line tool only listens and sends test frames.
 - Every ECU's bootloader is built with node ID 0, so only one ECU can be
   on the bus while it is flashed.
-- The wakeup frame always reports version 1.0.0. The bootloader does not
-  yet read a version from the application.
-- The bootloader does not check that the application region holds a valid
-  image before it jumps there.
+- Only `can-echo` links at the application offset and carries an image
+  header. The ECU firmware still links at `0x08000000` and is flashed with
+  a debug probe.

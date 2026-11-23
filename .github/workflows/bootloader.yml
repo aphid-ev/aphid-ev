@@ -6,6 +6,9 @@ on:
     paths: &paths
       - ecus/bootloader/**
       - crates/**
+      - tools/boot-image/**
+      - Cargo.toml
+      - Cargo.lock
       - justfile
       - rust-toolchain.toml
       - .github/actions/**
@@ -26,4 +29,5 @@ jobs:
       workspace: |
         ecus/bootloader
         ecus/bootloader/can-echo
+        .
       hardware: false

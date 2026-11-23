@@ -1,0 +1,12 @@
+[package]
+name = "boot-image"
+version = "0.1.0"
+description = "Seals a linked application ELF into an image the bootloader accepts"
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+boot-protocol = { path = "../../crates/boot-protocol" }
+clap = { version = "4.6.9", features = ["derive"] }
+object = { version = "0.41", default-features = false, features = ["read_core", "elf", "std"] }
+thiserror = "2.0.21"

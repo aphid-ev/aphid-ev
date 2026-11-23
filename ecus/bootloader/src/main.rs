@@ -3,6 +3,7 @@
 
 pub mod app;
 mod can;
+mod crc;
 mod flash;
 
 use app::App;
@@ -10,6 +11,7 @@ use boot_protocol::{Block, Command, Error, Frame, MAX_BLOCK_LEN, NodeId, WAKEUP_
 use can::Can;
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m_rt::entry;
+use crc::Crc;
 use flash::{Flash, FlashLayout};
 use pac::{GPIOB, PWR, RCC, SCB, SYST};
 use panic_halt as _;
@@ -49,11 +51,23 @@ const BOOTLOADER_SIZE: u32 = 8 * 1024;
 
 enum State {
     Init,
-    Wait,
+    /// Waiting for **Catch bootloader**. `valid` is whether the image passed
+    /// validation in `Init`; nothing writes flash before this state ends.
+    Wait {
+        valid: bool,
+    },
     Bootloader,
+    /// **Start application** received: validate the image again, since the
+    /// programmer has usually just rewritten it.
+    Start,
+    /// Only entered with an image that has just passed validation.
     Application,
     Erase,
-    Write { offset: u32, len: u16, crc: u16 },
+    Write {
+        offset: u32,
+        len: u16,
+        crc: u16,
+    },
 }
 
 #[entry]
@@ -72,14 +86,16 @@ fn main() -> ! {
 
     init_clock(&mut rcc, &mut pwr, &mut flash);
 
+    let mut crc = Crc::new(p.CRC, &mut rcc);
     let mut can = Can::new(p.FDCAN, &mut rcc, &mut gpiob);
 
     let mut state = State::Init;
     loop {
         state = match state {
-            State::Init => state_init(&mut can, &app),
-            State::Wait => state_wait(&mut can, &mut systick),
+            State::Init => state_init(&mut can, &app, &mut crc),
+            State::Wait { valid } => state_wait(&mut can, &mut systick, valid),
             State::Bootloader => state_bootloader(&mut can),
+            State::Start => state_start(&mut can, &app, &mut crc),
             State::Application => state_application(&mut can, &mut rcc, &mut gpiob, &mut scb, app),
             // Both of these answer the programmer, whether they worked or
             // not, so it is never left waiting on a command that finished.
@@ -144,14 +160,20 @@ fn init_clock(rcc: &mut RCC, pwr: &mut PWR, flash: &mut Flash) {
     while !rcc.cfgr().read().sws().is_pll() {}
 }
 
-fn state_init(can: &mut Can, app: &App) -> State {
-    let wakeup = Frame::wakeup(NODE_ID, &app.version);
+fn state_init(can: &mut Can, app: &App, crc: &mut Crc) -> State {
+    let image = app.validate(crc);
+
+    let wakeup = Frame::wakeup(NODE_ID, &image);
     can.send(&wakeup).ok();
 
-    State::Wait
+    State::Wait {
+        valid: image.is_ok(),
+    }
 }
 
-fn state_wait(can: &mut Can, systick: &mut SYST) -> State {
+/// Without a valid image the node stays in the bootloader when the window
+/// closes, so it can still be flashed.
+fn state_wait(can: &mut Can, systick: &mut SYST, valid: bool) -> State {
     let mut milliseconds = 0u32;
 
     systick.set_clock_source(SystClkSource::Core);
@@ -172,7 +194,11 @@ fn state_wait(can: &mut Can, systick: &mut SYST) -> State {
 
             if milliseconds > WAKEUP_WINDOW_MS {
                 systick.disable_counter();
-                return State::Application;
+                return if valid {
+                    State::Application
+                } else {
+                    State::Bootloader
+                };
             }
         }
     }
@@ -182,7 +208,7 @@ fn state_bootloader(can: &mut Can) -> State {
     loop {
         if let Some(frame) = can.receive() {
             match frame.as_command(NODE_ID) {
-                Some(Ok(Command::Start)) => return State::Application,
+                Some(Ok(Command::Start)) => return State::Start,
                 Some(Ok(Command::Erase)) => return State::Erase,
                 Some(Ok(Command::Program { offset, len, crc })) => {
                     return State::Write { offset, len, crc };
@@ -194,6 +220,18 @@ fn state_bootloader(can: &mut Can) -> State {
                 }
                 None => {}
             }
+        }
+    }
+}
+
+/// A valid image is started without a response, as before. An invalid one
+/// is refused, and the node stays in the bootloader.
+fn state_start(can: &mut Can, app: &App, crc: &mut Crc) -> State {
+    match app.validate(crc) {
+        Ok(_) => State::Application,
+        Err(_) => {
+            can.send(&Frame::response(Err(Error::InvalidImage))).ok();
+            State::Bootloader
         }
     }
 }
