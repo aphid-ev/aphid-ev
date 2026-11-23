@@ -69,17 +69,18 @@ impl Can {
         Self { fdcan }
     }
 
-    pub fn reset(&mut self, rcc: &mut RCC, gpiob: &mut GPIOB) {
-        // Reset GPIOB PB8 & PB9 to default
-        gpiob.moder().reset();
-        gpiob.afrh().reset();
-        gpiob.ospeedr().reset();
+    /// Puts FDCAN, its message RAM and GPIOB back in their reset state and
+    /// stops their clocks, so the application starts them from scratch.
+    /// The FDCAN kernel clock selection in CCIPR is part of the clock tree,
+    /// which the bootloader hands over configured.
+    pub fn reset(self, rcc: &mut RCC) {
+        rcc.apb1rstr1().modify(|_, w| w.fdcanrst().set_bit());
+        rcc.apb1rstr1().modify(|_, w| w.fdcanrst().clear_bit());
+        rcc.ahb2rstr().modify(|_, w| w.gpiobrst().set_bit());
+        rcc.ahb2rstr().modify(|_, w| w.gpiobrst().clear_bit());
 
-        // Disable GPIOB and FDCAN clocks
         rcc.ahb2enr().modify(|_, w| w.gpioben().disabled());
         rcc.apb1enr1().modify(|_, w| w.fdcanen().disabled());
-
-        // TODO: Reset FDCAN
     }
 
     /// Returns a frame if one is waiting, and `None` otherwise.
