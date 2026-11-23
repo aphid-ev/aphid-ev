@@ -152,9 +152,21 @@ ignored.
 
 ## `0x7ef` command response
 
-The node sends one response for every bootloader command addressed to it,
-including commands it refuses. The identifier carries no node ID, because
-`0x7ef` plus a node ID would collide with the catch frames at `0x7f0`.
+The node answers every bootloader command addressed to it with one
+response, including the commands it refuses, with two exceptions:
+
+- **Start application** gets no response when the image is valid, because
+  the node starts the application at once. It gets error 7 when the image
+  is not valid.
+- A command frame with a DLC other than 0, 4 or 8 is ignored.
+
+**Catch bootloader** and **Block data** are not commands and get no
+response of their own. The response to **Program block** comes after its
+block data, unless the node refuses the block as soon as the command
+arrives.
+
+The identifier carries no node ID, because `0x7ef` plus a node ID would
+collide with the catch frames at `0x7f0`.
 
 An empty frame means the command succeeded. A one-byte frame carries an
 error code:

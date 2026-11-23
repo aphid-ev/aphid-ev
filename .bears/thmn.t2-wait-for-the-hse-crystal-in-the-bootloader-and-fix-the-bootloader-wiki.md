@@ -1,13 +1,14 @@
 ---
 id: thmn.t2
 title: Wait for the HSE crystal in the bootloader and fix the bootloader wiki
-status: open
+status: done
 priority: P2
 created: "2026-11-23T19:00:57.506752Z"
-updated: "2026-11-23T19:00:57.506752Z"
+updated: "2026-11-23T20:13:16.435914383Z"
 tags:
   - bootloader
   - site
+attempts: 1
 ---
 
 Found in the review of qqxt.da and qqxt.b3.
