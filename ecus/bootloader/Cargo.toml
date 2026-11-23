@@ -27,4 +27,5 @@ debug = true
 # and the matching PAC chip module; see the `pac` alias in src/main.rs.
 [features]
 stm32g431cx = ["stm32g4/stm32g431"]
-stm32g491rx = ["stm32g4/stm32g491"]
+# Every 512 KiB STM32G491 package (CE, RE, ...).
+stm32g491xe = ["stm32g4/stm32g491"]

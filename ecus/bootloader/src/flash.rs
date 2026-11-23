@@ -14,6 +14,19 @@ const PROGRAM_SIZE: usize = boot_protocol::PROGRAM_ALIGNMENT as usize;
 /// untouched flash.
 const ERASED_BYTE: u8 = 0xff;
 
+/// Width of `PNB` in `FLASH_CR`, at bit 3. RM0440 gives category 2 parts
+/// (G431) seven bits and category 4 parts (G491) eight. The `stm32g4` PAC
+/// has seven for both, which is wrong for the G491, so `erase_page` writes
+/// the field by hand. ST's chip data, as packaged in `stm32-metapac`
+/// (`flash_g4c2` and `flash_g4c4`), agrees with RM0440.
+#[cfg(feature = "stm32g431cx")]
+const PNB_BITS: u32 = 7;
+#[cfg(feature = "stm32g491xe")]
+const PNB_BITS: u32 = 8;
+
+const PNB_SHIFT: u32 = 3;
+const PNB_MASK: u32 = (1 << PNB_BITS) - 1;
+
 pub struct FlashLayout {
     start_address: u32,
     page_size: u32,
@@ -35,10 +48,10 @@ impl FlashLayout {
         assert!(bootloader_size < memory_size);
         assert!(bootloader_size.is_multiple_of(page_size));
 
-        // PNB in FLASH_CR is seven bits wide, so the peripheral cannot name a
-        // page beyond 127. A layout that needs more has the wrong page size
-        // for the part, and would silently erase the wrong page.
-        assert!(memory_size / page_size <= 128);
+        // PNB cannot name a page beyond its width. A layout that needs more
+        // has the wrong page size for the part, and would silently erase the
+        // wrong page.
+        assert!(memory_size / page_size <= 1 << PNB_BITS);
 
         let bootloader = MemoryRegion {
             start_address,
@@ -58,11 +71,13 @@ impl FlashLayout {
         }
     }
 
-    pub fn application_pages(&self) -> PageIterator {
-        PageIterator {
-            current: ((self.application.start_address - self.start_address) / self.page_size) as u8,
-            length: (self.application.size / self.page_size) as u8,
-        }
+    /// The pages of the application region, as indices into the whole
+    /// flash. `new` asserts that every index fits in `PNB`, so in a `u8`.
+    pub fn application_pages(&self) -> impl Iterator<Item = u8> {
+        let first = (self.application.start_address - self.start_address) / self.page_size;
+        let count = self.application.size / self.page_size;
+
+        (first..first + count).map(|page| page as u8)
     }
 }
 
@@ -96,26 +111,6 @@ impl MemoryRegion {
         // layout is built for, and only the flash peripheral changes it: no
         // reference into it is held across an erase or write.
         unsafe { core::slice::from_raw_parts(self.start_address as *const u8, self.size as usize) }
-    }
-}
-
-pub struct PageIterator {
-    current: u8,
-    length: u8,
-}
-
-impl Iterator for PageIterator {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.length > 0 {
-            self.length -= 1;
-            let current = self.current;
-            self.current += 1;
-            Some(current)
-        } else {
-            None
-        }
     }
 }
 
@@ -194,17 +189,21 @@ impl Flash {
         if failed { Err(Error::Program) } else { Ok(()) }
     }
 
-    /// Erases one page. `page` indexes the whole flash, and only the low
-    /// seven bits reach the peripheral, so this addresses at most 128 pages.
+    /// Erases one page. `page` indexes the whole flash in pages of the
+    /// part's size; `FlashLayout::new` asserts that every page fits in PNB.
     pub fn erase_page(&mut self, page: u8) -> Result<()> {
         while self.is_busy() {}
 
         self.clear_status();
         self.unlock();
 
-        self.flash
-            .cr()
-            .modify(|_, w| unsafe { w.per().set_bit().pnb().bits(page) });
+        // PNB written by hand rather than through the PAC, whose field is a
+        // bit too narrow on the G491; see PNB_BITS.
+        self.flash.cr().modify(|r, w| {
+            let cr =
+                (r.bits() & !(PNB_MASK << PNB_SHIFT)) | ((page as u32 & PNB_MASK) << PNB_SHIFT);
+            unsafe { w.bits(cr) }.per().set_bit()
+        });
         self.flash.cr().modify(|_, w| w.strt().set_bit());
 
         let result = self.wait_ready();

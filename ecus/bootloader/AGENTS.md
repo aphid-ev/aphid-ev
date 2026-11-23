@@ -25,9 +25,12 @@ In addition to `ecus/AGENTS.md`.
 - Exactly one chip feature must be selected. With none or both, `stm32g4`'s
   own build script fails first with an unhelpful message, so check the
   feature flag first when a build breaks oddly.
-- Adding a chip is a feature and a `FlashLayout`. `FlashLayout::new` asserts
-  at compile time that the page count fits the 7-bit `PNB` field: the G491
-  has no bank select bit, so its 512 KiB is 128 pages of 4 KiB.
+- Adding a chip is a feature, a `FlashLayout` and a `PNB_BITS` in
+  `src/flash.rs`. `FlashLayout::new` asserts at compile time that the page
+  count fits `PNB`. Take the page size and the `PNB` width from RM0440 or
+  `stm32-metapac`, not from the `stm32g4` PAC: its `PNB` is seven bits on
+  every G4, but the G491 (category 4) has eight bits and 256 pages of
+  2 KiB. A wrong page size makes an erase hit the bootloader's own pages.
 - The flash layout is `BOOTLOADER_SIZE` in `src/main.rs`, the `FLASH` region
   in `memory.x` and the `ORIGIN` in each application's `memory.x`
   (`can-echo/memory.x` among them). An application linked at `0x08000000`

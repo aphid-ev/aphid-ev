@@ -18,11 +18,11 @@ use flash::{Flash, FlashLayout};
 use pac::{GPIOB, PWR, RCC, SCB, SYST};
 use panic_halt as _;
 
-#[cfg(all(feature = "stm32g431cx", feature = "stm32g491rx"))]
-compile_error!("select exactly one chip feature: stm32g431cx or stm32g491rx");
+#[cfg(all(feature = "stm32g431cx", feature = "stm32g491xe"))]
+compile_error!("select exactly one chip feature: stm32g431cx or stm32g491xe");
 
-#[cfg(not(any(feature = "stm32g431cx", feature = "stm32g491rx")))]
-compile_error!("select a chip feature: stm32g431cx or stm32g491rx");
+#[cfg(not(any(feature = "stm32g431cx", feature = "stm32g491xe")))]
+compile_error!("select a chip feature: stm32g431cx or stm32g491xe");
 
 /// Peripherals for the chip being built for.
 ///
@@ -32,7 +32,7 @@ compile_error!("select a chip feature: stm32g431cx or stm32g491rx");
 /// any code that touches peripherals.
 #[cfg(feature = "stm32g431cx")]
 pub use stm32g4::stm32g431 as pac;
-#[cfg(feature = "stm32g491rx")]
+#[cfg(feature = "stm32g491xe")]
 pub use stm32g4::stm32g491 as pac;
 
 const NODE_ID: NodeId = NodeId::MASTER;
@@ -41,11 +41,10 @@ const NODE_ID: NodeId = NodeId::MASTER;
 #[cfg(feature = "stm32g431cx")]
 const FLASH_LAYOUT: FlashLayout = FlashLayout::new(0x08000000, 0x20000, 2048, BOOTLOADER_SIZE);
 
-/// 512K in 4K pages, single bank. The larger page is not a typo: this part
-/// has no bank select bit and PNB is seven bits wide, so 512K has to be 128
-/// pages of 4K rather than 256 of 2K.
-#[cfg(feature = "stm32g491rx")]
-const FLASH_LAYOUT: FlashLayout = FlashLayout::new(0x08000000, 0x80000, 4096, BOOTLOADER_SIZE);
+/// 512K in 2K pages, single bank: every 512K G491 package (CE, RE, ...),
+/// category 4 in RM0440. 256 pages need the eight-bit PNB of category 4.
+#[cfg(feature = "stm32g491xe")]
+const FLASH_LAYOUT: FlashLayout = FlashLayout::new(0x08000000, 0x80000, 2048, BOOTLOADER_SIZE);
 
 /// Must match the FLASH region in memory.x, and be a whole number of pages
 /// on every supported chip.
