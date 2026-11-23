@@ -78,8 +78,13 @@ CLI verbs of the same names when the server is not connected.
 - `list_ready` shows tasks whose dependencies are done. Pick from there.
 - `start_task` before working on a task; `release_task` if you stop without
   finishing, so it returns to the pool.
-- `review_task` when the work is done and needs the user's review;
-  `complete_task` only when it needs none or the user has approved it.
+- A task is closed by the pull request that does its work. When the work is
+  done, `complete_task` and commit the task file on the same branch before
+  the pull request is opened, so that merging it closes the task. The user's
+  review of the pull request is the review of the task. Do not leave a
+  finished task `in_progress` or in `review` for a later commit.
+- Use `review_task` only for work that does not go through a pull request
+  and needs the user's review before it counts as done.
 - `create_task` for follow-up work you find but should not do now. Use
   `propose_task` when unsure it belongs in the backlog.
 - Group a vertical feature as an epic with one child task per component, and
