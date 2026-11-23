@@ -2,6 +2,15 @@
 // Communicates with slaves via daisy-chained ISO-SPI,
 // controls up to 3 contactors (low-side drivers),
 // reports on CAN bus.
+//
+// The high-voltage inputs are on their own connector so the board can keep
+// them isolated from the low-voltage side: a shunt current sense pair, a
+// voltage sense pair on the cell stack and a second voltage sense pair on
+// the pack's output terminals, past the contactors. The two voltages agree
+// once precharge is complete, so the BMS can run precharge without the
+// inverter, and they show a welded contactor. Every board has all three
+// inputs; which pack uses which is not decided, so the packs leave them
+// unwired.
 
 component BmsMaster {
     connector iso_spi "ISO-SPI 2p" {
@@ -17,6 +26,15 @@ component BmsMaster {
     connector power "Power 4p" {
         pub port b_pos "B+"  pin 1;
         pub port gnd   "GND" pins [2, 3, 4];
+    }
+
+    connector hv_sense "HV sense 6p" {
+        pub port shunt_p      "SHUNT+"      pin 1;
+        pub port shunt_n      "SHUNT-"      pin 2;
+        pub port pack_sense_p "PACK+ SENSE" pin 3;
+        pub port pack_sense_n "PACK- SENSE" pin 4;
+        pub port out_sense_p  "OUT+ SENSE"  pin 5;
+        pub port out_sense_n  "OUT- SENSE"  pin 6;
     }
 
     // Low-side contactor drivers

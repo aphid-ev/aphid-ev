@@ -147,6 +147,21 @@ The VCM has two 12-pin Molex MX-150 connectors:
 
 See [[VCM requirements#i-o]] for the canonical connector pinout.
 
+The wiring model is the current list of signals. The drawing shows every
+VCM port and what it connects to, and is the starting point for the I/O of
+the next board revision. A name that starts with `ic_` is a branch
+connector on the way to the device.
+
+![Schematic of the VCM with every port and a label naming what it connects to](/static/generated/wiring/vcm_i_o.svg#inline "VCM I/O")
+
+The model has 28 VCM signals. It does not yet have the charge inlet lock
+and status LEDs, or the reverse lights. Its connectors are placeholders,
+one per function, and the interlock input, the safe power output and the EV
+relay output have no connector pin yet.
+
+The ModICE enclosure size is not chosen. It comes with 32 or 40 connector
+positions, and the choice waits for the final signal count.
+
 ### CAN1 (high/low)
 
 Used to communicate with [[EV-CAN]] nodes: the Nissan Leaf inverter and
@@ -191,7 +206,8 @@ The key hangs off the cab loom on its own branch, so the key loom unplugs as one
 ### Accelerator input (ACC1/ACC2)
 
 The accelerator pedal uses a dual-channel analog position sensor so the
-VCM can cross-check the two signals.
+VCM can cross-check the two signals. See [[accelerator]] for the signal
+levels and the sensor.
 
 ![Harness drawing of the cab-loom side of the pedal branch: the VCM accelerator connector to the inline connector](/static/generated/wiring/cab_loom_pedal_branch.svg#inline "Cab loom, pedal branch")
 

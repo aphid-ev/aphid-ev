@@ -86,3 +86,17 @@ view schematic "HV System Overview" {
         east: interlock;
     }
 }
+
+// --- View: VCM I/O ---
+// Every VCM port with a stub naming what it connects to: inputs and
+// supplies on the left, buses and outputs on the right. The starting point
+// for the I/O of the VCM board.
+
+view schematic "VCM I/O" {
+    grid: 20;
+
+    include vcm at (20, 20) ports {
+        west: b_pos, gnd, ign, crank, interlock, accel_5v, accel_1, accel_2, accel_gnd, brake_1, brake_2, d1, d2, r1, r2, park_brake, pp, pump_tach;
+        east: can1_h, can1_l, can2_h, can2_l, safe_pwr, ev_ctrl, fan_ctrl, pump_pwm, dcdc_en, brake;
+    }
+}
