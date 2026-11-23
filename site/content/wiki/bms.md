@@ -36,18 +36,20 @@ from the low-voltage connector, so the board can keep them isolated:
 - A voltage sense pair on the pack's output terminals, after the
   contactors.
 
-The two voltages agree once precharge is complete, so the BMS can run
-precharge without the inverter being online. A voltage on the output
-terminals while the contactors are open shows a welded contactor.
+The BMS reports both voltages on CAN2. They agree once precharge is
+complete, and the VCM takes that decision from them; see
+[[contactors#precharge]]. A voltage on the output terminals while the
+contactors are open shows a welded contactor.
 
-Which pack uses which input is not decided, so the model leaves them
-unconnected. The enclosure needs two separate connectors for this.
+Both packs wire the two voltage sense pairs. The current shunt is in the
+front pack, so only the front BMS uses its shunt input. The packs are in
+series, so that one shunt measures the current of the whole string, and the
+front BMS reports it on CAN2. The enclosure needs two separate connectors
+for the high-voltage inputs.
 
-Which pack gets the precharge contactor is not decided either. It depends
-on the space in each pack. This page and the
-[[contactors|contactors page]] name the front pack, and the model draws it
-in the rear pack on the rear BMS's third output. Every board has the third
-output, so the choice does not affect the board.
+The precharge contactor is in the front pack, on the front BMS's third
+output. Every board has the third output, and the rear BMS leaves it
+unused.
 
 # Packaging
 

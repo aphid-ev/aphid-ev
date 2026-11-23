@@ -61,10 +61,10 @@ view harness "Brake loom" {
     grid: 20;
 
     include ic_brake.male at (0, 0);
-    include bs1.pwr       at (60, -9);
-    include bs1.sig       at (60, -3);
-    include bs2.pwr       at (60, 3);
-    include bs2.sig       at (60, 9);
+    include bs1.pwr       at (44, -9);
+    include bs1.sig       at (44, -3);
+    include bs2.pwr       at (44, 3);
+    include bs2.sig       at (44, 9);
 }
 
 // --- View: cab side ---

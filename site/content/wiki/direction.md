@@ -46,7 +46,7 @@ input and has no second switch.
 
 ![Schematic of the switch fuse feeding the gear lever and the parking brake switch, with their lines on the VCM gear connector](/static/generated/wiring/direction_selector.svg#inline "Direction selector")
 
-![Harness drawing of the gear loom from the inline connector to the gear lever and the parking brake switch](/static/generated/wiring/gear_loom.svg#inline "Gear loom")
+The gear loom drawings are on the [[Cab loom#gear-branch|Cab loom]] page.
 
 > [!WARNING]
 > The board below predates the current electrical architecture. The

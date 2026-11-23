@@ -16,6 +16,10 @@ description = "HV and LV wiring, contactors, BMS, sensors, and thermal managemen
 icon = "/static/images/category/electronics.svg"
 
 [[wiki_categories]]
+name = "Wiring"
+description = "Harness and connector drawings generated from the wiring model."
+
+[[wiki_categories]]
 name = "Architecture"
 description = "System-level design decisions, safety concept, and interlock logic."
 icon = "/static/images/category/architecture.svg"

@@ -7,11 +7,13 @@
 use PrimaryFuseBox from "../components/lv/primary_fuse_box.wb";
 use EvFuseBox      from "../components/lv/ev_fuse_box.wb";
 use LvBattery      from "../components/lv/lv_battery.wb";
+use Body           from "../components/lv/body.wb";
 
 extend Vehicle {
     main_fuses: PrimaryFuseBox "Primary fuse box";
     ev_fuses:   EvFuseBox      "Rear EV fuse box";
     aux:        LvBattery      "12V battery";
+    body:       Body           "Body";
 
     // --- Primary distribution ---
     // The battery and the primary box sit together under the rear seat.
@@ -19,72 +21,75 @@ extend Vehicle {
     // battery through MIDI 1, the rear EV box is fed from MIDI 2, and MIDI 3
     // feeds the Beetle's original system, which is not modelled.
     // The DC-DC lead is 35 mm² behind a 150 A MIDI fuse, sized for the
-    // converter's full 1.8 kW output, about 125 A. The other 25 mm² and
-    // 10 mm² gauges are placeholders until their MIDI fuse ratings are
-    // chosen.
+    // converter's full 1.8 kW output, about 125 A. The battery lead is not
+    // fused, so it is 35 mm² as well. The EV box feed is 10 mm² behind a
+    // 60 A MIDI fuse.
 
-    wire red 25 [aux.pos,         main_fuses.batt];
-    wire red 35 [charger.out_pos, main_fuses.dcdc];
-    wire red 10 [main_fuses.ev,   ev_fuses.feed];
+    wire red 35 "BATT"     [aux.pos,         main_fuses.batt];
+    wire red 35 "DCDC OUT" [charger.out_pos, main_fuses.dcdc];
+    wire red 10 "EV FEED"  [main_fuses.ev,   ev_fuses.feed];
 
     // Always-on supplies for the two BMS controllers.
-    wire red 2.5 [main_fuses.bms_front, front.b_pos];
-    wire red 2.5 [main_fuses.bms_rear,  rear.b_pos];
+    wire red 2.5 "BMS F 12V" [main_fuses.bms_front, front.b_pos];
+    wire red 2.5 "BMS R 12V" [main_fuses.bms_rear,  rear.b_pos];
 
     // --- Rear EV distribution ---
     // Always live: the VCM, the inverter's B+ and the OBC's SENSE.
-    wire red 2.5 [ev_fuses.vcm, vcm.b_pos];
-    wire red 2.5 [ev_fuses.inv, inv.b_pos];
-    wire red 1.0 [ev_fuses.obc, charger.sense];
+    wire red 2.5 "VCM 12V"   [ev_fuses.vcm, vcm.b_pos];
+    wire red 2.5 "INV B+"    [ev_fuses.inv, inv.b_pos];
+    wire red 1.0 "OBC SENSE" [ev_fuses.obc, charger.sense];
 
     // Switched by the EV relay: the inverter's ignition input and the
     // OBC's IGCT, so neither wakes while the car is idle. The VCM pulls
     // the relay in for driving and for charging. Brake switch 2
     // is on the same relay (looms/brake_branch.wb). The coolant pump has
     // its own relay on the same control line (systems/cooling.wb).
-    wire red 1.0 [ev_fuses.ev_sig, inv.ignition, charger.igct];
+    wire red 1.0 "EV SIG" [ev_fuses.ev_sig, inv.ignition, charger.igct];
 
     // The VCM switches the relay coils on the low side and enables the
     // DC/DC output once precharge is complete.
-    wire blue 0.5 [vcm.ev_ctrl,  ev_fuses.ev_ctrl];
-    wire blue 0.5 [vcm.fan_ctrl, ev_fuses.fan_ctrl];
-    wire blue 0.5 [vcm.dcdc_en,  charger.dc_sw];
+    wire blue 0.5 "EV CTRL"  [vcm.ev_ctrl,  ev_fuses.ev_ctrl];
+    wire blue 0.5 "FAN CTRL" [vcm.fan_ctrl, ev_fuses.fan_ctrl];
+    wire blue 0.5 "DCDC EN"  [vcm.dcdc_en,  charger.dc_sw];
 
     // --- Safe power ---
     // VCM enables safe power when interlock OK + safety checks pass.
     // Feeds contactor high-side in both battery packs; the front pack
     // is fed through the tunnel loom (looms/tunnel.wb).
 
-    wire red 2.5 [vcm.safe_pwr, rear.safe_pwr];
+    wire red 2.5 "SAFE PWR" [vcm.safe_pwr, rear.safe_pwr];
 
-    // --- Chassis ground ---
-    // Power returns share the chassis ground bus. The three grounds that sit
-    // on signal connectors (OBC signal GND, inverter B-, front BMS GND) come
-    // back to the VCM ground on their own leads, so the shared bus never
-    // decomposes into a segment drawn across those connectors in a harness
-    // view. (The rear pack grounds through the tunnel loom.)
-    // The DC-DC returns through the OBC/DC-DC case, on a strap as heavy as
-    // its output lead.
-    wire black 35 [charger.case_gnd, aux.neg];
-    wire black 6.0 [
-        aux.neg,
-        vcm.gnd,
-        pump.gnd,
-        fan.gnd,
-        bl_left.gnd,
-        bl_right.gnd,
-        bl_chmsl.gnd,
-        rev_light.gnd,
-    ];
-    wire black 1.0 [vcm.gnd, charger.gnd];
-    wire black 2.5 [vcm.gnd, inv.b_neg];
-    wire black 2.5 [vcm.gnd, front.gnd];
+    // --- Ground ---
+    // The body is the return. Battery negative is strapped to the ground
+    // stud beside the battery. The ECUs come back to that stud on their own
+    // leads: the VCM, the inverter B-, the OBC signal ground and the rear
+    // BMS. The front BMS reaches it through the tunnel loom
+    // (looms/tunnel.wb). The pump, the fan and the lamps ground to the body
+    // where they sit.
+    // The DC-DC returns through the OBC/DC-DC case, on a strap to battery
+    // negative as heavy as its output lead. The battery strap to the stud
+    // matches the battery lead.
+    wire black 35 "DCDC GND" [charger.case_gnd, aux.neg];
+    wire black 35 "BATT GND" [aux.neg,          body.stud];
+
+    wire black 2.5 "VCM GND" [vcm.gnd,     body.stud];
+    wire black 2.5 "INV B-"  [inv.b_neg,   body.stud];
+    wire black 1.0 "OBC GND" [charger.gnd, body.stud];
+    wire black 2.5 "BMS GND" [rear.gnd,    body.stud];
+
+    wire black 1.5 "GND" [pump.gnd,      body.gnd];
+    wire black 2.5 "GND" [fan.gnd,       body.gnd];
+    wire black 1.0 "GND" [bl_left.gnd,   body.gnd];
+    wire black 1.0 "GND" [bl_right.gnd,  body.gnd];
+    wire black 1.0 "GND" [bl_chmsl.gnd,  body.gnd];
+    wire black 1.0 "GND" [rev_light.gnd, body.gnd];
 }
 
 // --- View: 12V supply ---
 // The battery on the primary box's input stud, the DC-DC charging it
 // through MIDI 1, and MIDI 2 feeding the rear EV box. The stubs name
-// what each fuse supplies.
+// what each fuse supplies. Battery negative goes to the body's ground
+// stud.
 
 view schematic "12V supply" {
     grid: 20;
@@ -97,6 +102,10 @@ view schematic "12V supply" {
         east: pos, neg;
     }
 
+    include body at (4, 24) ports {
+        east: stud;
+    }
+
     include main_fuses at (24, 9) ports {
         west: dcdc, batt;
         east: ev, beetle, sw, bms_front, bms_rear, interlock;
@@ -106,4 +115,50 @@ view schematic "12V supply" {
         west: feed;
         east: vcm, inv, obc, ev_sig, pump, fan;
     }
+}
+
+// --- View: ground distribution ---
+// The body in the middle. On the left the leads to its ground stud: the
+// battery strap and the ECU grounds, with the front BMS behind the rear
+// one on the tunnel loom. On the right the loads that ground to the body
+// where they sit.
+
+view schematic "Ground distribution" {
+    grid: 20;
+
+    include charger at (4, 4) ports {
+        east: case_gnd, gnd;
+    }
+
+    include aux at (4, 11) ports {
+        east: neg;
+    }
+
+    include vcm at (4, 17) ports {
+        east: gnd;
+    }
+
+    include inv at (4, 23) ports {
+        east: b_neg;
+    }
+
+    include rear at (4, 29) ports {
+        east: gnd;
+    }
+
+    include front at (4, 35) ports {
+        east: gnd;
+    }
+
+    include body at (26, 19) ports {
+        west: stud;
+        east: gnd;
+    }
+
+    include pump      at (46, 4) ports { west: gnd; }
+    include fan       at (46, 10) ports { west: gnd; }
+    include bl_left   at (46, 16) ports { west: gnd; }
+    include bl_right  at (46, 22) ports { west: gnd; }
+    include bl_chmsl  at (46, 28) ports { west: gnd; }
+    include rev_light at (46, 34) ports { west: gnd; }
 }

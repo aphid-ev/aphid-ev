@@ -6,11 +6,11 @@
 // The high-voltage inputs are on their own connector so the board can keep
 // them isolated from the low-voltage side: a shunt current sense pair, a
 // voltage sense pair on the cell stack and a second voltage sense pair on
-// the pack's output terminals, past the contactors. The two voltages agree
-// once precharge is complete, so the BMS can run precharge without the
-// inverter, and they show a welded contactor. Every board has all three
-// inputs; which pack uses which is not decided, so the packs leave them
-// unwired.
+// the pack's output terminals, past the contactors. The BMS reports both
+// voltages on CAN2. They agree once precharge is complete, and the VCM
+// takes that decision from them. They also show a welded contactor. Both
+// packs wire the two voltage sense pairs. The current shunt is in the
+// front pack, so only the front BMS uses the shunt pair.
 
 component BmsMaster {
     connector iso_spi "ISO-SPI 2p" {

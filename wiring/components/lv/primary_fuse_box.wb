@@ -18,14 +18,14 @@ component PrimaryFuseBox {
 
     // MIDI fuses, bolted between the bus bar and the output studs.
     f_dcdc:   Fuse "MIDI 1 DC-DC 150 A";
-    f_ev:     Fuse "MIDI 2 EV box";
-    f_beetle: Fuse "MIDI 3 Beetle";
+    f_ev:     Fuse "MIDI 2 EV box 60 A";
+    f_beetle: Fuse "MIDI 3 Beetle 60 A";
 
     // Blade fuses, always live.
-    f_sw:        Fuse "F1 Switches";
+    f_sw:        Fuse "F1 Switches 5 A";
     f_bms_front: Fuse "F2 BMS front 5 A";
     f_bms_rear:  Fuse "F3 BMS rear 5 A";
-    f_interlock: Fuse "F4 Interlock";
+    f_interlock: Fuse "F4 Interlock 3 A";
 
     // M8 input stud, straight to the 12V battery.
     pub port batt "BATT";
@@ -36,14 +36,14 @@ component PrimaryFuseBox {
     pub port ev     "EV BOX";
     pub port beetle "BEETLE";
 
-    // Blade-fuse outputs. SW feeds the driver's switches: the key, the
-    // gear lever and brake switch 1.
+    // Blade-fuse outputs. SW feeds the driver's switches: the gear
+    // lever, the parking brake switch and brake switch 1.
     pub port sw        "SW";
     pub port bms_front "BMS F";
     pub port bms_rear  "BMS R";
     pub port interlock "INTLK";
 
-    wire red 25 [batt, f_dcdc.a, f_ev.a, f_beetle.a, f_sw.a, f_bms_front.a, f_bms_rear.a, f_interlock.a];
+    wire red 35 [batt, f_dcdc.a, f_ev.a, f_beetle.a, f_sw.a, f_bms_front.a, f_bms_rear.a, f_interlock.a];
 
     wire red 35  [f_dcdc.b,      dcdc];
     wire red 10  [f_ev.b,        ev];
@@ -61,41 +61,41 @@ view schematic "Primary fuse box" {
     grid: 20;
 
     enclosure {
-        batt      at (west, 17);
+        batt      at (west, 20);
         dcdc      at (east, 2);
-        ev        at (east, 7);
-        beetle    at (east, 12);
-        sw        at (east, 17);
-        bms_front at (east, 22);
-        bms_rear  at (east, 27);
-        interlock at (east, 32);
+        ev        at (east, 8);
+        beetle    at (east, 14);
+        sw        at (east, 20);
+        bms_front at (east, 26);
+        bms_rear  at (east, 32);
+        interlock at (east, 38);
     }
 
     include f_dcdc at (14, 2) ports {
         west: a;
         east: b;
     }
-    include f_ev at (14, 7) ports {
+    include f_ev at (14, 8) ports {
         west: a;
         east: b;
     }
-    include f_beetle at (14, 12) ports {
+    include f_beetle at (14, 14) ports {
         west: a;
         east: b;
     }
-    include f_sw at (14, 17) ports {
+    include f_sw at (14, 20) ports {
         west: a;
         east: b;
     }
-    include f_bms_front at (14, 22) ports {
+    include f_bms_front at (14, 26) ports {
         west: a;
         east: b;
     }
-    include f_bms_rear at (14, 27) ports {
+    include f_bms_rear at (14, 32) ports {
         west: a;
         east: b;
     }
-    include f_interlock at (14, 32) ports {
+    include f_interlock at (14, 38) ports {
         west: a;
         east: b;
     }

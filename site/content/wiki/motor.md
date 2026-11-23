@@ -34,11 +34,9 @@ Coming soon...
 
 ## Wiring
 
-![Pinout of the motor's power and feedback connectors](/static/generated/wiring/motor_pinout.svg#inline "Motor pinout")
-
-![Harness drawing of the three phase conductors from the inverter to the motor](/static/generated/wiring/motor_phase_harness.svg#inline "Motor phase harness")
-
-![Harness drawing of the resolver and temperature pairs from the inverter control connector to the motor](/static/generated/wiring/motor_feedback_harness.svg#inline "Motor feedback harness")
+The phase and feedback cable drawings are on the
+[[HV cables#motor|HV cables]] page, and the feedback connector face is under
+[[pinouts]].
 
 ## Resolver connector
 

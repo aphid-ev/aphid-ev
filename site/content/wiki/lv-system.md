@@ -30,19 +30,44 @@ which the regulations require. The car has no gearbox switch for it, so the
 VCM lights it while the selected direction is R. The rest of the Beetle's original
 electrical system is not modelled.
 
-## Harness
+The harness drawings are on the [[Rear loom]] page.
 
-The rear loom carries the VCM's 12 V, cooling and lighting leads and the
-chassis-ground rail.
+# Original system {#original-system}
 
-![Harness drawing of the rear LV loom from the VCM to the coolant pump, radiator fan, stop lamps and reverse light](/static/generated/wiring/rear_lv_harness.svg#inline "Rear LV harness")
+The Beetle's original 12 V system meets the EV systems in three places:
 
-The OBC/DC-DC signal ground and the inverter B- return to the VCM on their
-own leads.
+- Its supply is the third MIDI fuse of the
+  [[#primary-distribution|primary distribution box]].
+- The key keeps switching the original ignition circuits on its original
+  feed. The VCM taps the key's run and start terminals as inputs. The car
+  has no starter, so the start terminal carries only that signal.
+- The stop lamps and the reverse light are fed by the VCM, so their
+  original feeds are disconnected. The two brake switches signal the VCM
+  and no longer switch the lamps.
 
-![Harness drawing of the ground leads from the OBC/DC-DC and the inverter to the VCM](/static/generated/wiring/signal_ground_leads.svg#inline "Signal ground leads")
+# Grounding {#grounding}
 
-# DC/DC
+The car body is the 12 V return, as in the original Beetle.
+
+- Battery negative is strapped to the body at a ground stud beside the
+  battery.
+- The VCM, the inverter B-, the OBC/DC-DC signal ground and the rear BMS
+  each have their own lead to that stud. The front BMS reaches it through
+  the tunnel cable from the rear pack.
+- The coolant pump, the radiator fan, the stop lamps and the reverse light
+  ground to the body where they sit.
+- The DC-DC returns through its case, on a strap straight to battery
+  negative; see [[#dcdc|DC/DC]].
+
+The sensors and switches that the VCM reads on a ground of its own keep
+that ground: the accelerator sensor and the charge inlet's lock feedback,
+LEDs and stop button.
+
+The battery strap is 35 mm², the same as the battery lead.
+
+![Schematic of the ground leads: the battery strap and the ECU grounds on the body's ground stud, and the pump, fan and lamps grounded to the body](/static/generated/wiring/ground_distribution.svg#inline "Ground distribution")
+
+# DC/DC {#dcdc}
 
 The [[obc#dcdc|Mitsubishi DC-DC converter]] delivers up to 1.8 kW, about
 125 A at 14.4 V. Its output is a single stud, and the return is the
@@ -59,13 +84,13 @@ other original loads stay on the Beetle's own fuse box.
 | --- | --- | --- | --- |
 | Front BMS | 5 A | Primary | Always on |
 | Rear BMS | 5 A | Primary | Always on |
-| Key, gear lever, parking brake switch and brake switch 1 | *TBD* | Primary | Always on |
-| HV interlock loop | *TBD* | Primary | Always on |
-| VCM | 5 A | Rear | Always on |
+| Gear lever, parking brake switch and brake switch 1 | 5 A | Primary | Always on |
+| HV interlock loop | 3 A | Primary | Always on |
+| VCM | 15 A | Rear | Always on |
 | Inverter B+ | 10 A | Rear | Always on |
 | OBC/DC-DC sense | 7.5 A | Rear | Always on |
-| Relay coils | *TBD* | Rear | Always on |
-| Inverter ignition, OBC/DC-DC IGCT and brake switch 2 | *TBD* | Rear | EV relay |
+| Relay coils | 3 A | Rear | Always on |
+| Inverter ignition, OBC/DC-DC IGCT and brake switch 2 | 7.5 A | Rear | EV relay |
 | Coolant water pump | 10 A | Rear | Pump relay |
 | Cooling fan | 10 A | Rear | Fan relay |
 
@@ -91,21 +116,27 @@ The three MIDI-fused M8 outputs are assigned to:
 3. The Beetle's original 12 V electrical system.
 
 The DC-DC output has a 150 A MIDI fuse and 35 mm² cable, sized for the
-converter's full output of about 125 A. The other two MIDI fuse ratings and
-cable sizes are not chosen yet.
+converter's full output of about 125 A. The battery lead to the input stud
+is 35 mm² as well, because it is not fused.
+
+The rear EV box has a 60 A MIDI fuse and 10 mm² cable. Its fuses add up to
+63 A, so check the MIDI rating once the real load currents are measured. The Beetle's original system also has a 60 A MIDI fuse and
+10 mm² cable. That rating is a starting value: check it against the
+original loads.
 
 The XT also provides four low-current automotive fuse positions through a
 four-pin FCI APEX 2.8 connector, housing 54200409. They are always live and
 are assigned to:
 
-1. The driver's switches: the ignition key, the gear lever, the parking
-   brake switch and brake switch 1. Their outputs connect directly to VCM inputs.
+1. The driver's switches: the gear lever, the parking brake switch and
+   brake switch 1. Their outputs connect directly to VCM inputs.
 2. Always-on supply for the front BMS.
 3. Always-on supply for the rear BMS.
 4. The [[safety#interlock|HV interlock loop]], including the emergency
    switch and terminating at the VCM.
 
-The fuse ratings and the connector pin order remain to be decided.
+The switch fuse is 5 A, the BMS fuses 5 A each and the interlock fuse 3 A.
+The connector pin order remains to be decided.
 
 # Rear EV distribution {#rear-distribution}
 
@@ -133,8 +164,15 @@ its relay, then to the load. A short jumper at the back of the box links
 each of those fuses to pin 30 of its relay.
 
 Three fuses supply always-on loads: the VCM, the inverter's B+ and the
-sense input of the OBC/DC-DC. A fourth fuse feeds the relay stud and so the
+sense input of the OBC/DC-DC. The VCM fuse is 15 A, because the one feed
+also supplies the VCM's high-side outputs: safe power to the contactor
+coils, the stop and reverse lamps, and the inlet lock. It is sized for
+incandescent lamps. A fourth fuse feeds the relay stud and so the
 relay coils.
+
+The relay-coil fuse is 3 A and the EV-signal fuse 7.5 A. The current the
+OBC/DC-DC draws on IGCT is not documented, so check the EV-signal rating on
+the bench.
 
 Three relays supply loads that should be off while the car is idle:
 

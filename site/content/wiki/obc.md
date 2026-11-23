@@ -83,7 +83,7 @@ A 13-way connector on a short tail. The mating half is Sumitomo 6189-1092.
 | 7 | Sense | Always-on 12 V, 7.5 A fuse |
 | 8 | IGCT, main 12 V supply | EV relay |
 | 9 | Control pilot | Charge inlet CP |
-| 10 | Ground | VCM ground |
+| 10 | Ground | Ground stud |
 | 12 | CHOT | Not used |
 | 13 | CAN L | CAN1 |
 
@@ -191,9 +191,9 @@ The charge sequence is described under
 
 ![Schematic of the charging control signals: CP to the OBC, and PP, the DC/DC enable, the lock, the status LEDs and the stop button to the VCM](/static/generated/wiring/charging_control.svg#inline "Charging control")
 
-![Harness drawing of the leads between the VCM charge connector, the inlet, the lock, the stop button and the OBC/DC-DC](/static/generated/wiring/charge_signal_harness.svg#inline "Charge signal harness")
-
-![Harness drawing of the AC lead from the charge inlet to the OBC](/static/generated/wiring/ac_charge_harness.svg#inline "AC charge harness")
+The harness drawings are on the [[Rear loom#charge-inlet|Rear loom]] page
+for the signal leads and the [[HV cables#ac-charge-lead|HV cables]] page for
+the AC lead.
 
 # Sources {#sources}
 

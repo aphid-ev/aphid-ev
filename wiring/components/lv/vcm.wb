@@ -18,6 +18,9 @@ component Vcm {
         pub port can2_l "CAN2 L" pin 2;
     }
 
+    // The one supply, always live behind a 15 A fuse. It feeds the
+    // electronics and every high-side output: safe power, the lamps, the
+    // lock motor and the LEDs.
     connector lv "12V 2p" {
         pub port b_pos "B+"  pin 1;
         pub port gnd   "GND" pin 2;
@@ -26,8 +29,8 @@ component Vcm {
     connector accel "Accelerator 4p" {
         pub port accel_1   "ACCEL 1"   pin 1;
         pub port accel_2   "ACCEL 2"   pin 2;
-        pub port accel_gnd "ACCEL GND" pin 3;
-        pub port accel_5v  "ACCEL 5V"  pin 4;
+        pub port accel_5v  "ACCEL 5V"  pin 3;
+        pub port accel_gnd "ACCEL GND" pin 4;
     }
 
     connector brake "Brake 2p" {
@@ -53,6 +56,8 @@ component Vcm {
     }
 
     // Ignition key inputs — the RUN and START signals from the dash key.
+    // IGN also wakes the VCM's power circuitry; once awake the VCM holds
+    // itself on from B+.
     connector key "Key 2p" {
         pub port ign   "IGN"   pin 1;
         pub port crank "CRANK" pin 2;

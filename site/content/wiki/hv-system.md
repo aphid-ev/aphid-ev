@@ -21,7 +21,21 @@ The pack itself is described under [[batteries]] and is gated by the
 
 The front and rear [[batteries|battery sections]] are connected in series
 to form a 96s2p traction pack. The MSD in the front battery contains the
-traction pack's 250 A main fuse.
+traction pack's 250 A main fuse. It sits on the front pack's negative leg,
+between the negative contactor and the pack terminal.
+
+The MSD part is not chosen. The candidate is the Amphenol MINI-MSD. Facts
+from Amphenol drawing MINIMSD, revision B:
+
+- The plug holds the fuse. MINI-MSDM250 has a 250 A Bussmann fuse and
+  MINI-MSDM2501 a 250 A Zhongrong fuse.
+- The receptacle is MINI-MSDF000F for front mounting or MINI-MSDF000R for
+  rear mounting. It has two M6 studs, tightened to 5.3 Nm.
+- The receptacle has a two-way interlock connector, MSD-HVIL-2S.
+- The rated voltage is 690 V AC with the Bussmann fuse and 750 V DC with
+  the Zhongrong fuse. The drawing gives no DC rating for the Bussmann fuse.
+- The ambient temperature range is -40 °C to 70 °C, and the mated pair is
+  sealed to IP67 and IP6K9K.
 
 The HV junction box distributes the completed battery string to the
 inverter and OBC/DC-DC. The OBC/DC-DC branch has its own 30 A fuse on the
@@ -38,12 +52,11 @@ loop.
 
 # Electrical diagram
 
-The schematic follows the HV bus from the battery string through the MSD and
-the junction box to the inverter, motor and OBC/DC-DC. The interlock loop runs
+The schematic follows the HV bus from the battery string through the
+junction box to the inverter, motor and OBC/DC-DC. The MSD is inside the
+front battery; see [[batteries]]. The interlock loop runs
 along the bottom.
 
-![Schematic of the HV system: battery string, MSD, HV junction box, inverter, motor and OBC/DC-DC](/static/generated/wiring/hv_system_overview.svg#inline "HV system overview")
+![Schematic of the HV system: battery string, HV junction box, inverter, motor and OBC/DC-DC](/static/generated/wiring/hv_system_overview.svg#inline "HV system overview")
 
-## Harness
-
-![Harness drawing of the HV cables between the batteries, MSD, junction box, inverter and OBC/DC-DC](/static/generated/wiring/main_hv_harness.svg#inline "Main HV harness")
+The cable drawings are on the [[HV cables]] page.

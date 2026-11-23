@@ -158,6 +158,14 @@ connector on the way to the device.
 
 ![Schematic of the VCM with every port and a label naming what it connects to](/static/generated/wiring/vcm_i_o.svg#inline "VCM I/O")
 
+The driver's inputs in one schematic: the key, the two brake switches with
+their feeds, and the accelerator sensor on the VCM's 5 V supply.
+
+![Schematic of the key, the two brake switches with their feeds, and the accelerator sensor, with their lines to the VCM](/static/generated/wiring/driver_inputs.svg#inline "Driver inputs")
+
+The harness drawings of the branches to these inputs are on the
+[[Cab loom]] page.
+
 The model has 36 VCM signals. Its connectors are placeholders,
 one per function, and the interlock input, the safe power output and the EV
 relay output have no connector pin yet.
@@ -184,15 +192,17 @@ precharge high voltage contactors.
 
 ### +12 V IN
 
-Main feed from the 12 V battery.
+The VCM's only supply. It is always live, behind a 15 A fuse in the
+[[LV system#rear-distribution|rear EV fuse box]], and also feeds the
+high-side outputs. The ignition input wakes the VCM's power circuitry, and
+the VCM then holds itself on from this feed.
 
 ### Ignition
 
-The original-style key switch receives a fused 12 V feed and sends separate
-RUN and START signals directly to VCM inputs. The key feed comes from the
-switch fuse in the
-[[LV system#primary-distribution|primary distribution box]], which also
-feeds the gear lever, the parking brake switch and brake switch 1.
+The key switch keeps its original job. It takes its feed from the Beetle's
+own wiring and switches the Beetle's original ignition circuits. The VCM
+taps its RUN and START terminals as two inputs; see
+[[LV system#original-system]].
 
 +12 V when the ignition switch is in the ignition (RUN) position.
 
@@ -202,19 +212,11 @@ feeds the gear lever, the parking brake switch and brake switch 1.
 
 The key hangs off the cab loom on its own branch, so the key loom unplugs as one.
 
-![Harness drawing of the cab-loom side of the key branch: the VCM key connector to the inline connector](/static/generated/wiring/cab_loom_key_branch.svg#inline "Cab loom, key branch")
-
-![Harness drawing of the key loom from the inline connector to the key switch](/static/generated/wiring/key_loom.svg#inline "Key loom")
-
 ### Accelerator input (ACC1/ACC2)
 
 The accelerator pedal uses a dual-channel analog position sensor so the
 VCM can cross-check the two signals. See [[accelerator]] for the signal
 levels and the sensor.
-
-![Harness drawing of the cab-loom side of the pedal branch: the VCM accelerator connector to the inline connector](/static/generated/wiring/cab_loom_pedal_branch.svg#inline "Cab loom, pedal branch")
-
-![Harness drawing of the pedal stub from the inline connector to the accelerator pedal](/static/generated/wiring/pedal_stub.svg#inline "Pedal stub")
 
 ### Brake input (BRAKE1/BRAKE2)
 
@@ -223,20 +225,12 @@ requests regenerative braking, activates the brake lights, and prevents
 positive accelerator torque while the brakes are applied. Each switch has
 its own 12 V feed; see [[LV system#brake-switch-feeds]].
 
-![Harness drawing of the cab-loom side of the brake branch: the VCM brake connector to the inline connector](/static/generated/wiring/cab_loom_brake_branch.svg#inline "Cab loom, brake branch")
-
-![Harness drawing of the brake loom from the inline connector to the two brake sensors](/static/generated/wiring/brake_loom.svg#inline "Brake loom")
-
 ### Direction input (DIR_F1/DIR_F2 and DIR_R1/DIR_R2)
 
 Input from the [[direction]]: two complementary switch lines per direction
 from the sprung gear lever. Each pull steps the state along R, N, D. The
 VCM accepts a step into D or R only while the car is stopped with the brake
 applied. The parking brake switch uses a fifth input on the same connector.
-
-![Harness drawing of the cab-loom side of the gear branch: the VCM gear connector to the inline connector](/static/generated/wiring/cab_loom_gear_branch.svg#inline "Cab loom, gear branch")
-
-![Harness drawing of the gear loom from the inline connector to the gear lever](/static/generated/wiring/gear_loom.svg#inline "Gear loom")
 
 ### Charge inlet
 
@@ -258,8 +252,8 @@ open.
 
 ### External 5 V feed
 
-5 V output to accelerator pedal hall effect sensors and the momentary
-switches on the brake pedal and direction selector.
+5 V supply for the accelerator sensor. The brake switches and the gear
+lever switches take 12 V from the fuse boxes instead.
 
 # Firmware
 
@@ -292,7 +286,7 @@ See [[Main firmware]].
 
 High side drivers: ST VNQ9025AT
 
-- Waterpump relay
-- Cooling fan relay
 - Brake lights
 - Reverse lights
+
+The EV, pump and fan relay coils are switched on the low side.

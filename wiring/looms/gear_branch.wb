@@ -31,8 +31,8 @@ extend Vehicle {
     // switch.
     splice sp_gear_feed "Gear feed splice";
 
-    // Cab side: the switch feed from the primary fuse box, shared with the
-    // key and brake switch 1; the switch lines to the VCM.
+    // Cab side: the switch feed from the primary fuse box, shared with
+    // brake switch 1; the switch lines to the VCM.
     cable gear_feed "Gear feed" {
         type: "6-core";
 
@@ -95,10 +95,10 @@ view harness "Gear loom" {
     grid: 20;
 
     include ic_gear.male   at (0, 0);
-    include sp_gear_feed   at (40, -10);
-    include gear.x1        at (64, -2);
-    include park_brake.pwr at (64, -14);
-    include park_brake.sig at (64, 10);
+    include sp_gear_feed   at (30, -10);
+    include gear.x1        at (48, -2);
+    include park_brake.pwr at (48, -14);
+    include park_brake.sig at (48, 10);
 }
 
 // --- View: cab side ---

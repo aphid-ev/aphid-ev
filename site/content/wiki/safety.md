@@ -43,9 +43,14 @@ VCM safety path and the relevant BMS.
 The loop is fed from a low-current fuse in the primary distribution box
 and terminates at the VCM; see [[LV system#primary-distribution]].
 
-The harness drawing shows the interlock wiring through the battery packs.
+Inside the front pack the loop passes through the MSD, so pulling the MSD
+opens it. The schematic shows the loop from its fuse to the VCM, and the safe power
+the VCM feeds to the contactor coils in both packs while the loop is closed.
 
-![Harness drawing of the interlock loop through the MSD, front and rear battery and HV junction box](/static/generated/wiring/battery_signal_harness.svg#inline "Battery signal harness")
+![Schematic of the interlock loop from the primary fuse box through the emergency stop, the battery packs, HV junction box and inverter to the VCM, and the safe power from the VCM to both packs](/static/generated/wiring/interlock_and_safe_power.svg#inline "Interlock and safe power")
+
+The harness drawing of the interlock leads at the battery packs is on the
+[[Rear loom#battery-signals|Rear loom]] page.
 
 # Functional safety
 

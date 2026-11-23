@@ -32,12 +32,12 @@ extend Vehicle {
 view schematic "Brake and reverse lights" {
     grid: 20;
 
-    include vcm at (4, 8) ports {
+    include vcm at (4, 12) ports {
         east: brake, reverse;
     }
 
     include bl_left   at (26, 3) ports { west: stop; }
-    include bl_right  at (26, 8) ports { west: stop; }
-    include bl_chmsl  at (26, 13) ports { west: stop; }
-    include rev_light at (26, 18) ports { west: rev; }
+    include bl_right  at (26, 9) ports { west: stop; }
+    include bl_chmsl  at (26, 15) ports { west: stop; }
+    include rev_light at (26, 21) ports { west: rev; }
 }

@@ -9,15 +9,18 @@ component Motor {
         pub port phase_w "W" pin 3;
     }
 
+    // Pin order from the openinverter Nissan Leaf Motors wiki, as on the
+    // motor wiki page. The source names pins 3 and 8 only as the excitation
+    // coil: which of them is EX+ is not confirmed.
     connector inverter: YazakiRH_8p {
         pub port temp_neg    "TEMP-" pin 1;
         pub port temp_pos    "TEMP+" pin 2;
         pub port res_ex_pos  "EX+"   pin 3;
-        pub port res_ex_neg  "EX-"   pin 4;
-        pub port res_sin_pos "SIN+"  pin 5;
-        pub port res_sin_neg "SIN-"  pin 6;
-        pub port res_cos_neg "COS-"  pin 7;
-        pub port res_cos_pos "COS+"  pin 8;
+        pub port res_sin_pos "SIN+"  pin 4;
+        pub port res_sin_neg "SIN-"  pin 5;
+        pub port res_cos_neg "COS-"  pin 6;
+        pub port res_cos_pos "COS+"  pin 7;
+        pub port res_ex_neg  "EX-"   pin 8;
     }
 }
 

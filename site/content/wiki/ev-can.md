@@ -31,7 +31,8 @@ documented.
 
 ![Schematic of CAN1 and CAN2 with the VCM between them and the terminated nodes marked](/static/generated/wiring/can_bus.svg#inline "CAN buses")
 
-![Harness drawing of the twisted-pair CAN cables between the BMS controllers, VCM, OBC/DC-DC and inverter](/static/generated/wiring/can_harness.svg#inline "CAN harness")
+The harness drawing of the CAN cables is on the [[Rear loom#can|Rear loom]]
+page.
 
 # Electrical
 

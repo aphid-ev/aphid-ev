@@ -1,0 +1,14 @@
+// Current shunt
+// A shunt in the traction current path with a Kelvin sense pair to the
+// BMS. The packs are in series, so the one shunt in the front pack
+// measures the whole string.
+
+component Shunt {
+    part:        "BAS-M-R0001-R-5.0";
+    description: "Current shunt";
+
+    pub port a       "A";
+    pub port b       "B";
+    pub port sense_p "SENSE+";
+    pub port sense_n "SENSE-";
+}

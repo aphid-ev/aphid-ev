@@ -22,11 +22,16 @@ Each section is supervised by its own [[bms|BMS]].
 # Front battery
 
 The front battery contains positive and negative main contactors, the
-manual service disconnect (MSD), and the precharge contactor and resistor.
+manual service disconnect (MSD), the precharge contactor and resistor, and
+the current shunt.
 Mounting the MSD and precharge hardware with the front pack keeps the
 service-isolation point and precharge circuit in the same assembly.
 
-The MSD contains the traction pack's 250 A main fuse.
+The MSD contains the traction pack's 250 A main fuse. It sits on the
+pack's negative leg, between the negative contactor and the pack terminal,
+and the [[safety#interlock|HV interlock loop]] passes through it. The
+candidate part is described under
+[[HV system#battery-string-and-fusing|HV system]].
 
 # Rear battery
 
@@ -37,15 +42,17 @@ connections.
 
 # Wiring
 
-![Schematic of the front battery: six cell modules, main contactors, MSD and precharge](/static/generated/wiring/front_battery.svg#inline "Front battery")
+![Schematic of the front battery: six cell modules, the main and precharge contactors with their coil wiring, the current shunt, the MSD and the BMS controller](/static/generated/wiring/front_battery.svg#inline "Front battery")
 
-![Schematic of the rear battery: six cell modules and main contactors](/static/generated/wiring/rear_battery.svg#inline "Rear battery")
+![Schematic of the rear battery: six cell modules, the main contactors with their coil wiring and the BMS controller](/static/generated/wiring/rear_battery.svg#inline "Rear battery")
 
 ![Schematic of one 8s2p cell module and its monitoring connections](/static/generated/wiring/cell_module.svg#inline "Cell module")
 
 # Current shunt
 
-For current measurement on the pack:
+One shunt measures the current of the whole string. It sits in the front
+battery on the negative leg, between the last cell module and the negative
+contactor, with its sense pair on the front [[bms|BMS]].
 
 - Shunt resistor: **BAS-M-R0001-R-5.0**
 - Isolated ADC: **AMC3306M05**

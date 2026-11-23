@@ -14,13 +14,12 @@ extend Vehicle {}
 view harness "Main HV harness" {
     grid: 20;
 
-    // Pack-string bundle: the series-linked batteries and the MSD on the
-    // left fan into the junction box's pack connector on the right —
-    // mirroring the schematic's source → junction flow.
+    // Pack-string bundle: the series-linked batteries on the left fan into
+    // the junction box's pack connector on the right, mirroring the
+    // schematic's source → junction flow. The MSD is inside the front pack.
     include front.hv  at (12, 5);
-    include rear.hv   at (24, 5);
-    include msd.hv    at (0, 7);
-    include hvjb.pack at (40, 8);
+    include rear.hv   at (26, 1);
+    include hvjb.pack at (44, 7);
 
     // Distribution bundle: the junction box on the left feeds the inverter
     // and the OBC/DC-DC on the right (junction → load, same direction).
@@ -51,34 +50,36 @@ view harness "CAN harness" {
 }
 
 // --- View: rear LV harness ---
-// The VCM's 12V, cooling and lighting connectors on the left, the loads they
-// drive on the right. The chassis-ground rail runs VCM → pump → fan → stop
-// lamps → reverse light.
+// The VCM's cooling and lighting connectors on the left, the pump and the
+// lamps on the right. The loads ground to the body where they sit, on
+// leads this view does not draw. The fan has no lead from the VCM: its
+// feed comes from the rear EV fuse box.
 
 view harness "Rear LV harness" {
     grid: 20;
 
-    include vcm.lv      at (0, 0);
-    include vcm.cooling at (0, 8);
-    include vcm.lights  at (0, 18);
+    include vcm.cooling at (0, 0);
+    include vcm.lights  at (0, 14);
 
     include pump.x1      at (44, 0);
-    include fan.x1       at (44, 10);
-    include bl_left.x1   at (44, 18);
-    include bl_right.x1  at (44, 26);
-    include bl_chmsl.x1  at (44, 34);
-    include rev_light.x1 at (44, 42);
+    include bl_left.x1   at (44, 10);
+    include bl_right.x1  at (44, 16);
+    include bl_chmsl.x1  at (44, 22);
+    include rev_light.x1 at (44, 28);
 }
 
-// --- View: signal ground leads ---
-// The OBC/DC-DC signal ground and the inverter B- come back to the VCM on
-// their own leads rather than on the chassis-ground rail. The CAN1 hop
-// between the two units shows because both connectors are in the view.
+// --- View: powertrain signal harness ---
+// The leads between the VCM, the OBC/DC-DC and the inverter: CAN1 from the
+// VCM through the OBC to the inverter, the ground of each of the three
+// units on its own lead to the body's ground stud, and the EV-signal link
+// from the inverter's ignition input to the OBC's IGCT.
 
-view harness "Signal ground leads" {
+view harness "Powertrain signal harness" {
     grid: 20;
 
-    include vcm.lv      at (0, 6);
-    include charger.sig at (36, 0);
-    include inv.control at (36, 14);
+    include vcm.can1    at (0, 0);
+    include vcm.lv      at (0, 10);
+    include charger.sig at (44, 4);
+    include inv.control at (0, 24);
+    include body.x1     at (44, 20);
 }
