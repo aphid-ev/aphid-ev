@@ -42,7 +42,11 @@ own leads.
 
 # DC/DC
 
-Ground strap to the Mitsubishi OBC/DC-DC.
+The [[obc#dcdc|Mitsubishi DC-DC converter]] delivers up to 1.8 kW, about
+125 A at 14.4 V. Its output is a single stud, and the return is the
+aluminium case. A 35 mm² cable runs from the stud to the first MIDI fuse of
+the primary distribution box, and a 35 mm² ground strap runs from the case
+to the battery negative.
 
 # Consumers
 
@@ -57,7 +61,7 @@ other original loads stay on the Beetle's own fuse box.
 | HV interlock loop | *TBD* | Primary | Always on |
 | VCM | 5 A | Rear | Always on |
 | Inverter B+ | 10 A | Rear | Always on |
-| OBC/DC-DC sense | *TBD* | Rear | Always on |
+| OBC/DC-DC sense | 7.5 A | Rear | Always on |
 | Relay coils | *TBD* | Rear | Always on |
 | Inverter ignition, OBC/DC-DC IGCT and brake switch 2 | *TBD* | Rear | EV relay |
 | Coolant water pump | 10 A | Rear | Pump relay |
@@ -84,8 +88,9 @@ The three MIDI-fused M8 outputs are assigned to:
 2. The rear EV fuse and relay box.
 3. The Beetle's original 12 V electrical system.
 
-The MIDI fuse ratings and the cable sizes are not chosen yet. The DC-DC
-cable has to carry the converter's full output current.
+The DC-DC output has a 150 A MIDI fuse and 35 mm² cable, sized for the
+converter's full output of about 125 A. The other two MIDI fuse ratings and
+cable sizes are not chosen yet.
 
 The XT also provides four low-current automotive fuse positions through a
 four-pin FCI APEX 2.8 connector, housing 54200409. They are always live and
@@ -132,7 +137,8 @@ relay coils.
 Three relays supply loads that should be off while the car is idle:
 
 - The EV relay feeds the inverter's ignition input, the IGCT input of the
-  OBC/DC-DC and brake switch 2.
+  OBC/DC-DC and brake switch 2. The VCM pulls it in for driving and for
+  charging.
 - The pump relay feeds the coolant pump. It shares the EV relay's control
   line.
 - The fan relay feeds the electric cooling fan.

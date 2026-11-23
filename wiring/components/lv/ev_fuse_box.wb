@@ -34,7 +34,7 @@ component EvFuseBox {
     // Always-live loads.
     f_vcm: Fuse "VCM 5 A";
     f_inv: Fuse "Inverter B+ 10 A";
-    f_obc: Fuse "OBC sense";
+    f_obc: Fuse "OBC sense 7.5 A";
 
     // Relay coils, through the relay stud.
     f_coils: Fuse "Relay coils";

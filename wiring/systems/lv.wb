@@ -18,11 +18,13 @@ extend Vehicle {
     // The battery lands on the box's input stud. The DC-DC charges the
     // battery through MIDI 1, the rear EV box is fed from MIDI 2, and MIDI 3
     // feeds the Beetle's original system, which is not modelled.
-    // The 25 mm² and 10 mm² gauges are placeholders until the MIDI fuse
-    // ratings are chosen.
+    // The DC-DC lead is 35 mm² behind a 150 A MIDI fuse, sized for the
+    // converter's full 1.8 kW output, about 125 A. The other 25 mm² and
+    // 10 mm² gauges are placeholders until their MIDI fuse ratings are
+    // chosen.
 
     wire red 25 [aux.pos,         main_fuses.batt];
-    wire red 25 [charger.out_pos, main_fuses.dcdc];
+    wire red 35 [charger.out_pos, main_fuses.dcdc];
     wire red 10 [main_fuses.ev,   ev_fuses.feed];
 
     // Always-on supplies for the two BMS controllers.
@@ -36,13 +38,14 @@ extend Vehicle {
     wire red 1.0 [ev_fuses.obc, charger.sense];
 
     // Switched by the EV relay: the inverter's ignition input and the
-    // OBC's IGCT, so neither wakes while the car is idle. Brake switch 2
+    // OBC's IGCT, so neither wakes while the car is idle. The VCM pulls
+    // the relay in for driving and for charging. Brake switch 2
     // is on the same relay (looms/brake_branch.wb). The coolant pump has
     // its own relay on the same control line (systems/cooling.wb).
     wire red 1.0 [ev_fuses.ev_sig, inv.ignition, charger.igct];
 
-    // The VCM switches the relay coils on the low side and enables the DC/DC output once
-    // the HV system is up.
+    // The VCM switches the relay coils on the low side and enables the
+    // DC/DC output once precharge is complete.
     wire blue 0.5 [vcm.ev_ctrl,  ev_fuses.ev_ctrl];
     wire blue 0.5 [vcm.fan_ctrl, ev_fuses.fan_ctrl];
     wire blue 0.5 [vcm.dcdc_en,  charger.dc_sw];
@@ -60,7 +63,9 @@ extend Vehicle {
     // back to the VCM ground on their own leads, so the shared bus never
     // decomposes into a segment drawn across those connectors in a harness
     // view. (The rear pack grounds through the tunnel loom.)
-    wire black 25 [charger.out_neg, aux.neg];
+    // The DC-DC returns through the OBC/DC-DC case, on a strap as heavy as
+    // its output lead.
+    wire black 35 [charger.case_gnd, aux.neg];
     wire black 6.0 [
         aux.neg,
         vcm.gnd,
@@ -84,7 +89,7 @@ view schematic "12V supply" {
     grid: 20;
 
     include charger at (4, 4) ports {
-        east: out_pos, out_neg;
+        east: out_pos, case_gnd;
     }
 
     include aux at (4, 14) ports {

@@ -24,8 +24,11 @@ to form a 96s2p traction pack. The MSD in the front battery contains the
 traction pack's 250 A main fuse.
 
 The HV junction box distributes the completed battery string to the
-inverter and OBC/DC-DC. The OBC/DC-DC branch will have a separate HV fuse;
-its type and rating remain to be selected.
+inverter and OBC/DC-DC. The OBC/DC-DC branch has its own 30 A fuse on the
+positive leg in the junction box, the rating Mitsubishi uses for the unit,
+and runs in 6 mm² cable. The fuse type remains to be selected. The branch
+has no contactor of its own, so the whole HV bus,
+inverter included, is live while the car charges.
 
 # Isolation
 

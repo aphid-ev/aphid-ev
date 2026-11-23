@@ -96,7 +96,7 @@ view schematic "VCM I/O" {
     grid: 20;
 
     include vcm at (20, 20) ports {
-        west: b_pos, gnd, ign, crank, interlock, accel_5v, accel_1, accel_2, accel_gnd, brake_1, brake_2, d1, d2, r1, r2, park_brake, pp, pump_tach;
-        east: can1_h, can1_l, can2_h, can2_l, safe_pwr, ev_ctrl, fan_ctrl, pump_pwm, dcdc_en, brake;
+        west: b_pos, gnd, ign, crank, interlock, accel_5v, accel_1, accel_2, accel_gnd, brake_1, brake_2, d1, d2, r1, r2, park_brake, pp, lock_fb, chg_stop, inlet_gnd, pump_tach;
+        east: can1_h, can1_l, can2_h, can2_l, safe_pwr, ev_ctrl, fan_ctrl, pump_pwm, dcdc_en, lock_a, lock_b, led_red, led_green, brake;
     }
 }

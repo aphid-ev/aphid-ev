@@ -2,14 +2,19 @@
 //
 // The mains charge inlet feeds the on-board charger over a 3-lead cable
 // (line, neutral, protective earth). Two pilot signals break out from the
-// inlet: the control pilot (CP) goes to the OBC's signal connector, and the
-// proximity pilot (PP) goes to the VCM, which does cable detection and then
-// commands charging over CAN.
+// inlet: the control pilot (CP) goes straight to the OBC's signal
+// connector, and the proximity pilot (PP) goes to the VCM, which detects
+// the cable and then commands charging over CAN. The VCM also drives the
+// inlet lock and the two status LEDs, and reads the stop button.
 
-use ChargeInlet from "../components/hv/charge_inlet.wb";
+use ChargeInlet  from "../components/hv/charge_inlet.wb";
+use InletLock    from "../components/hv/inlet_lock.wb";
+use ChargeButton from "../components/lv/charge_button.wb";
 
 extend Vehicle {
-    ac_inlet: ChargeInlet "AC charge inlet";
+    ac_inlet:   ChargeInlet  "AC charge inlet";
+    inlet_lock: InletLock    "Inlet lock";
+    chg_button: ChargeButton "Charge stop button";
 
     cable ac_charge "AC charge lead" {
         type:   "3-core";
@@ -23,6 +28,22 @@ extend Vehicle {
     // Pilots: CP to the OBC, PP to the VCM.
     wire white 0.5 "CP" [ac_inlet.cp, charger.cp];
     wire white 0.5 "PP" [ac_inlet.pp, vcm.pp];
+
+    // Inlet lock, status LEDs and stop button, all from the VCM.
+    cable inlet_ctrl "Inlet control" {
+        type: "6-core";
+
+        wire grey       0.5 "LOCK A"   [vcm.lock_a,      inlet_lock.motor_pos];
+        wire grey/black 0.5 "LOCK B"   [vcm.lock_b,      inlet_lock.motor_neg];
+        wire yellow     0.5 "LOCK FB"  [inlet_lock.fb_1, vcm.lock_fb];
+        wire pink       0.5 "LED RED"  [vcm.led_red,     ac_inlet.led_red];
+        wire green      0.5 "LED GRN"  [vcm.led_green,   ac_inlet.led_green];
+        wire violet     0.5 "CHG STOP" [chg_button.sw,   vcm.chg_stop];
+    }
+
+    // The feedback switch, the LEDs and the button share one return to the
+    // VCM.
+    wire black 0.5 "INLET GND" [vcm.inlet_gnd, inlet_lock.fb_2, ac_inlet.led_gnd, chg_button.gnd];
 }
 
 // --- View: AC charge harness ---
@@ -37,35 +58,48 @@ view harness "AC charge harness" {
 
 // --- View: charging control ---
 // The pilot and enable signalling: CP from the inlet to the OBC, PP to the
-// VCM, and the VCM's DC/DC enable to the OBC's DC SW pin.
+// VCM, and the VCM's DC/DC enable to the OBC's DC SW pin. Below them the
+// VCM's lock drive, lock feedback, status LEDs and stop button.
 
 view schematic "Charging control" {
     grid: 20;
 
-    include ac_inlet at (2, 7) ports {
-        east: cp, pp;
-    }
-
-    include charger at (22, 3) ports {
-        west:  cp;
+    include charger at (6, 3) ports {
+        east:  cp;
         south: dc_sw;
     }
 
-    include vcm at (22, 13) ports {
-        west:  pp;
+    include vcm at (6, 20) ports {
         north: dcdc_en;
+        east:  pp, led_red, led_green, lock_a, lock_b, lock_fb, chg_stop, inlet_gnd;
+    }
+
+    include ac_inlet at (30, 9) ports {
+        west: cp, pp, led_red, led_green, led_gnd;
+    }
+
+    include inlet_lock at (30, 23) ports {
+        west: motor_pos, motor_neg, fb_1, fb_2;
+    }
+
+    include chg_button at (30, 34) ports {
+        west: sw, gnd;
     }
 }
 
 // --- View: charge signal harness ---
-// The pilot and enable leads: CP from the inlet to the OBC signal
-// connector, PP from the inlet to the VCM, and the VCM's DC/DC enable to the
-// OBC.
+// The VCM's charge connector on the left. On the right the inlet's pilot
+// and LED connectors, the lock, the stop button and the OBC signal
+// connector, which takes CP from the inlet and the DC/DC enable.
 
 view harness "Charge signal harness" {
     grid: 20;
 
-    include ac_inlet.x1 at (0, 0);
-    include vcm.charge  at (0, 12);
-    include charger.sig at (40, 4);
+    include vcm.charge at (0, 16);
+
+    include charger.sig   at (44, 0);
+    include ac_inlet.x1   at (44, 10);
+    include ac_inlet.leds at (44, 18);
+    include inlet_lock.x1 at (44, 28);
+    include chg_button.x1 at (44, 38);
 }

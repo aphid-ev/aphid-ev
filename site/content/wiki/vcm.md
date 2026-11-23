@@ -66,9 +66,9 @@ executing as expected. The two communicate over a serial link.
 
 # Operating states {#operating-states}
 
-- **Off:** the main contactors and EV-system relay are open. The BMS
-  controllers and the VCM's low-power supply remain on for monitoring and
-  wake-up.
+- **Off:** the main contactors and EV-system relay are open. The VCM
+  sleeps on its always-on supply and the BMS controllers stay powered. The
+  key or a charge cable on the proximity pilot wakes the VCM.
 - **Ready:** the control networks and switched EV loads are powered. After
   safety checks, the system performs precharge and closes the main
   contactors; propulsion remains at zero torque until a direction is
@@ -76,9 +76,12 @@ executing as expected. The two communicate over a serial link.
 - **Drive:** a direction has been accepted with the brake applied, the
   charge connector is absent, and the VCM may command traction or
   regenerative torque.
-- **Charge:** PP detection initiates the sequence, the VCM inhibits drive
-  and locks the inlet, and the contactors close through the normal
-  precharge sequence. The OBC derives the permitted current from CP.
+- **Charge:** PP detection initiates the sequence, also with the key off.
+  The VCM inhibits drive, locks the inlet and pulls in the EV relay, which
+  powers the OBC and the coolant pump. The contactors close through the
+  normal precharge sequence, and the OBC derives the permitted current from
+  CP. When the charge is finished the VCM unlocks the inlet, opens the
+  contactors and goes back to sleep.
 - **Fault:** torque is commanded to zero. For faults requiring HV shutdown,
   or if the main VCM processor stops responding on the internal
   communication bus, the safety processor removes the high-side
@@ -125,8 +128,9 @@ STM32F091CC monitor.
 
 > [!WARNING]
 > This pinout predates the current electrical architecture. It does not
-> yet have the charge inlet proximity pilot, lock and LED signals, the
-> coolant pump PWM and tacho, or the radiator fan relay output.
+> yet have the charge inlet proximity pilot, lock, LED and stop button
+> signals, the coolant pump PWM and tacho, or the radiator fan relay
+> output.
 
 The VCM has two 12-pin Molex MX-150 connectors:
 
@@ -154,8 +158,8 @@ connector on the way to the device.
 
 ![Schematic of the VCM with every port and a label naming what it connects to](/static/generated/wiring/vcm_i_o.svg#inline "VCM I/O")
 
-The model has 28 VCM signals. It does not yet have the charge inlet lock
-and status LEDs, or the reverse lights. Its connectors are placeholders,
+The model has 35 VCM signals. It does not yet have the reverse lights. Its
+connectors are placeholders,
 one per function, and the interlock input, the safe power output and the EV
 relay output have no connector pin yet.
 
@@ -234,6 +238,24 @@ applied. The parking brake switch uses a fifth input on the same connector.
 ![Harness drawing of the cab-loom side of the gear branch: the VCM gear connector to the inline connector](/static/generated/wiring/cab_loom_gear_branch.svg#inline "Cab loom, gear branch")
 
 ![Harness drawing of the gear loom from the inline connector to the gear lever](/static/generated/wiring/gear_loom.svg#inline "Gear loom")
+
+### Charge inlet
+
+Seven signals serve the [[obc#inlet|charge inlet]], besides the DC-DC
+enable to the OBC:
+
+- The proximity pilot input. It is also a wake source, and reading it as an
+  analogue value gives the cable's current rating.
+- Two H-bridge outputs for the [[obc#lock|inlet lock]] motor, which draws
+  at most 650 mA for up to one second.
+- The lock feedback input, a switch closed to ground while locked.
+- Two outputs for the red and green status LEDs. The green LED pulses
+  while charging, so its output needs PWM or a software blink.
+- The stop button input, a switch closed to ground.
+
+The feedback switch, the LEDs and the button share one ground return pin.
+The lock is optional, so the car has to charge with the lock pins left
+open.
 
 ### External 5 V feed
 

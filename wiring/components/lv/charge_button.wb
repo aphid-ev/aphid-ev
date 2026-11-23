@@ -1,0 +1,10 @@
+// Charge stop button
+// A momentary push button beside the charge inlet. It closes to ground;
+// the VCM stops the charge and unlocks the inlet.
+
+component ChargeButton {
+    connector x1 "Button 2p" {
+        pub port sw  "SW"  pin 1;
+        pub port gnd "GND" pin 2;
+    }
+}

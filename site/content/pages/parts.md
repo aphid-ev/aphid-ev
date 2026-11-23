@@ -17,8 +17,8 @@ on acquiring each.
 | Main contactors | Littelfuse DCNEV250-M | ✅ Yes |
 | Precharge contactors | Littelfuse DCNSEV30-B | ✅ Yes |
 | Service disconnect | *TBD* | ❌ No |
-| Charger | Nissan Leaf Gen 2 PDM | ✅ Yes |
-| DC/DC | Nissan Leaf Gen 2 PDM | ✅ Yes |
+| Charger and DC/DC | [[obc]] | ✅ Yes |
+| Charge inlet | BESEN BS-EVSC004, see [[obc#inlet]] | ❌ No |
 | Axle adapter | *TBD* | ❌ No |
 | Adapter plate | *TBD* | ❌ No |
 | Accelerator pedal | *TBD* | ❌ No |

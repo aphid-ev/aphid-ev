@@ -1,14 +1,30 @@
-// AC charge inlet
-// The vehicle-side single-phase mains inlet: line, neutral, and protective
-// earth run to the on-board charger; the control pilot (CP) goes to the
-// OBC and the proximity pilot (PP) to the VCM for cable detection.
+// AC charge inlet (BESEN BS-EVSC004, Type 2)
+// The vehicle-side mains inlet, used single-phase: L1, neutral and
+// protective earth run to the on-board charger and the L2 and L3 contacts
+// stay empty. The control pilot (CP) goes to the OBC and the proximity
+// pilot (PP) to the VCM for cable detection. A Type 2 inlet has no pin
+// numbers; the numbers here only order the table.
+//
+// The inlet has a red and a green lens with room for an LED behind each.
+// The LEDs are not part of the inlet: two 12 V indicator LEDs are fitted
+// and driven by the VCM.
 
 component ChargeInlet {
-    connector x1 "AC inlet 5p" {
-        pub port l  "L"  pin 1;
+    part:         "BS-EVSC004";
+    manufacturer: "BESEN";
+    description:  "Type 2 vehicle inlet, 32 A, with 16 A single-phase tails";
+
+    connector x1 "Type 2 inlet" {
+        pub port l  "L1" pin 1;
         pub port n  "N"  pin 2;
         pub port pe "PE" pin 3;
-        pub port cp "CP" pin 4; // control pilot → OBC
-        pub port pp "PP" pin 5; // proximity pilot → VCM
+        pub port cp "CP" pin 4; // control pilot, to the OBC
+        pub port pp "PP" pin 5; // proximity pilot, to the VCM
+    }
+
+    connector leds "Status LEDs 3p" {
+        pub port led_red   "LED RED" pin 1;
+        pub port led_green "LED GRN" pin 2;
+        pub port led_gnd   "LED GND" pin 3;
     }
 }
