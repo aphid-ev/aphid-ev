@@ -1,8 +1,8 @@
 // Coolant pump
-// A smart 4-wire pump: switched 12 V from the EV-12V rail plus a low-current
+// A smart 4-wire pump: fused, relay-switched 12 V plus a low-current
 // PWM speed command from the VCM, and a tacho line that pulses once per
 // revolution back to the VCM for closed-loop control and stall detection.
-// No relay of its own — the EV-12V master relay gates its supply.
+// Its relay in the rear EV fuse box pulls in together with the EV relay.
 
 component CoolantPump {
     connector x1 "Pump 4p" {

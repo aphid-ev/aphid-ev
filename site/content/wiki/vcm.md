@@ -172,7 +172,9 @@ Main feed from the 12 V battery.
 
 The original-style key switch receives a fused 12 V feed and sends separate
 RUN and START signals directly to VCM inputs. The key feed comes from the
-[[LV system#primary-distribution|primary distribution box]].
+switch fuse in the
+[[LV system#primary-distribution|primary distribution box]], which also
+feeds the gear lever and brake switch 1.
 
 +12 V when the ignition switch is in the ignition (RUN) position.
 
@@ -199,7 +201,8 @@ VCM can cross-check the two signals.
 
 The original brake switches connect independently to the VCM. Brake input
 requests regenerative braking, activates the brake lights, and prevents
-positive accelerator torque while the brakes are applied.
+positive accelerator torque while the brakes are applied. Each switch has
+its own 12 V feed; see [[LV system#brake-switch-feeds]].
 
 ![Harness drawing of the cab-loom side of the brake branch: the VCM brake connector to the inline connector](/static/generated/wiring/cab_loom_brake_branch.svg#inline "Cab loom, brake branch")
 

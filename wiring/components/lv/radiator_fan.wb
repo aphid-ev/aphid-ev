@@ -1,6 +1,6 @@
 // Radiator fan
-// A plain 12 V fan switched on/off by the VCM through its own fuse-box
-// relay (thermostatic — runs only when coolant temperature demands it).
+// A plain 12 V fan switched on/off by the VCM through its own relay in
+// the rear EV fuse box (thermostatic — runs only when coolant temperature demands it).
 
 component RadiatorFan {
     connector x1 "Fan 2p" {

@@ -21,13 +21,14 @@ extend Vehicle {
         port d    "D"    pin 3;
     }
 
-    // Cab side: fused feed from the fuse box, R/D requests to the VCM.
+    // Cab side: the switch feed from the primary fuse box, shared with the
+    // key and brake switch 1; R/D requests to the VCM.
     cable gear_feed "Gear feed" {
         type: "3-core";
 
-        wire red    1.0 "FEED" [fuses.shift, ic_gear.feed];
-        wire green  0.5 "R"    [ic_gear.r,   vcm.r];
-        wire yellow 0.5 "D"    [ic_gear.d,   vcm.d];
+        wire red    1.0 "FEED" [main_fuses.sw, ic_gear.feed];
+        wire green  0.5 "R"    [ic_gear.r,     vcm.r];
+        wire yellow 0.5 "D"    [ic_gear.d,     vcm.d];
     }
 
     // Gear loom: the ~2 m run from the branch point to the gear lever.
@@ -54,7 +55,7 @@ view harness "Gear loom" {
 
 // --- View: cab side ---
 // VCM to the branch point; the inline shows its female half, the housing
-// crimped onto the cab loom. The fuse-box feed has no connector and is not
+// crimped onto the cab loom. The fuse box feed has no connector and is not
 // drawn.
 
 view harness "Cab loom — gear branch" {

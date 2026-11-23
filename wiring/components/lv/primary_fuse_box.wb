@@ -1,0 +1,102 @@
+// Primary 12V distribution box (Littelfuse XT 880073)
+// Sits under the rear seat beside the 12V battery. The battery lands on
+// the M8 input stud, which feeds one bus bar. Three MIDI fuses take that
+// bus to M8 output studs; four small fuses take it to a 4-way FCI APEX
+// 2.8 connector (housing 54200409). The stud is rated 300 A.
+//
+// The ports are not on connectors yet: the APEX pin order is not fixed.
+
+component PrimaryFuseBox {
+    part:         "880073";
+    manufacturer: "Littelfuse";
+    description:  "XT power distribution module, 3 MIDI and 4 blade fuses";
+
+    component Fuse {
+        pub port a "IN";
+        pub port b "OUT";
+    }
+
+    // MIDI fuses, bolted between the bus bar and the output studs.
+    f_dcdc:   Fuse "MIDI 1 DC-DC";
+    f_ev:     Fuse "MIDI 2 EV box";
+    f_beetle: Fuse "MIDI 3 Beetle";
+
+    // Blade fuses, always live.
+    f_sw:        Fuse "F1 Switches";
+    f_bms_front: Fuse "F2 BMS front 5 A";
+    f_bms_rear:  Fuse "F3 BMS rear 5 A";
+    f_interlock: Fuse "F4 Interlock";
+
+    // M8 input stud, straight to the 12V battery.
+    pub port batt "BATT";
+
+    // M8 output studs. BEETLE feeds the car's original electrical system,
+    // which this model does not describe.
+    pub port dcdc   "DC-DC";
+    pub port ev     "EV BOX";
+    pub port beetle "BEETLE";
+
+    // Blade-fuse outputs. SW feeds the driver's switches: the key, the
+    // gear lever and brake switch 1.
+    pub port sw        "SW";
+    pub port bms_front "BMS F";
+    pub port bms_rear  "BMS R";
+    pub port interlock "INTLK";
+
+    wire red 25 [batt, f_dcdc.a, f_ev.a, f_beetle.a, f_sw.a, f_bms_front.a, f_bms_rear.a, f_interlock.a];
+
+    wire red 25  [f_dcdc.b,      dcdc];
+    wire red 10  [f_ev.b,        ev];
+    wire red 10  [f_beetle.b,    beetle];
+    wire red 1.0 [f_sw.b,        sw];
+    wire red 2.5 [f_bms_front.b, bms_front];
+    wire red 2.5 [f_bms_rear.b,  bms_rear];
+    wire red 0.5 [f_interlock.b, interlock];
+}
+
+// --- View: primary fuse box ---
+// The bus bar on the left, one fuse per output.
+
+view schematic "Primary fuse box" {
+    grid: 20;
+
+    enclosure {
+        batt      at (west, 17);
+        dcdc      at (east, 2);
+        ev        at (east, 7);
+        beetle    at (east, 12);
+        sw        at (east, 17);
+        bms_front at (east, 22);
+        bms_rear  at (east, 27);
+        interlock at (east, 32);
+    }
+
+    include f_dcdc at (14, 2) ports {
+        west: a;
+        east: b;
+    }
+    include f_ev at (14, 7) ports {
+        west: a;
+        east: b;
+    }
+    include f_beetle at (14, 12) ports {
+        west: a;
+        east: b;
+    }
+    include f_sw at (14, 17) ports {
+        west: a;
+        east: b;
+    }
+    include f_bms_front at (14, 22) ports {
+        west: a;
+        east: b;
+    }
+    include f_bms_rear at (14, 27) ports {
+        west: a;
+        east: b;
+    }
+    include f_interlock at (14, 32) ports {
+        west: a;
+        east: b;
+    }
+}

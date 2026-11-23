@@ -12,10 +12,11 @@ several Tesla EVs, circulates coolant through the cooling loop for the
 waterpump that is often belt-driven from the crankshaft, this one is
 electrically driven and controlled.
 
-The electric coolant pump is powered from the switched EV supply, receives
-a PWM speed command from the VCM, and returns a tacho signal for
-monitoring. The VCM controls a separate HWB18 relay for the radiator fan;
-see [[LV system#rear-distribution]].
+The electric coolant pump is powered through its own fuse and relay in the
+rear EV fuse box, receives a PWM speed command from the VCM, and returns a
+tacho signal for monitoring. The pump relay pulls in together with the EV
+relay. The VCM controls a separate relay for the radiator fan; see
+[[LV system#rear-distribution]].
 
 # Connector
 
@@ -37,7 +38,7 @@ The pump draws about *TBD* A from the +12 V feed at full load.
 Though main power is provided through the 12 V feed, the pump is
 controlled and monitored through two 5 V signal lines.
 
-![Schematic of the VCM and fuse box driving the coolant pump and radiator fan](/static/generated/wiring/cooling_system.svg#inline "Cooling system")
+![Schematic of the VCM and rear EV fuse box driving the coolant pump and radiator fan](/static/generated/wiring/cooling_system.svg#inline "Cooling system")
 
 ## PWM input
 

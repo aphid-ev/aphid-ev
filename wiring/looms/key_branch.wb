@@ -3,7 +3,7 @@
 // The dash-mounted starter key hangs off the cab harness through its own
 // inline connector (a mated Deutsch DT 3-way pair) so the ~2 m key loom
 // can be unplugged as one. Three conductors cross the branch: a fused 12 V
-// feed in from the fuse box, and the key's IGN and CRANK outputs back to
+// feed in from the primary fuse box, and the key's IGN and CRANK outputs back to
 // the VCM. The main run carries the female half; the key loom the male.
 
 use KeySwitch from "../components/lv/key_switch.wb";
@@ -23,13 +23,14 @@ extend Vehicle {
         port crank "CRANK" pin 3;
     }
 
-    // Cab side: fused feed from the fuse box, key signals to the VCM.
+    // Cab side: the switch feed from the primary fuse box, shared with the
+    // gear lever and brake switch 1; key signals to the VCM.
     cable key_feed "Key feed" {
         type: "3-core";
 
-        wire red    1.0 "FEED"  [fuses.key,    ic_key.feed];
-        wire violet 0.5 "IGN"   [ic_key.ign,   vcm.ign];
-        wire grey   0.5 "CRANK" [ic_key.crank, vcm.crank];
+        wire red    1.0 "FEED"  [main_fuses.sw, ic_key.feed];
+        wire violet 0.5 "IGN"   [ic_key.ign,    vcm.ign];
+        wire grey   0.5 "CRANK" [ic_key.crank,  vcm.crank];
     }
 
     // Key loom: the ~2 m run from the branch point to the dash key switch.
@@ -56,7 +57,7 @@ view harness "Key loom" {
 
 // --- View: cab side ---
 // VCM to the branch point; the inline shows its female half, the housing
-// crimped onto the cab loom. The fuse-box feed has no connector and is not
+// crimped onto the cab loom. The fuse box feed has no connector and is not
 // drawn.
 
 view harness "Cab loom — key branch" {

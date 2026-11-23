@@ -76,6 +76,7 @@ component Vcm {
     // Safe power output — enabled when interlock + safety OK
     pub port safe_pwr "SAFE PWR";
 
-    // EV-12V master relay drive — energises the fuse box relay when EV on
+    // EV relay drive — low-side switch for the EV and pump relay coils in
+    // the rear EV fuse box, on when the EV system is on
     pub port ev_ctrl "EV CTRL";
 }
