@@ -1,9 +1,9 @@
-use crate::{RxReceiver, TxSender};
+use crate::{EventReceiver, FrameSender};
 use can_usb_protocol::{
     BULK_IN_EP, BULK_OUT_EP, Frame, INTERFACE, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID,
     Packer, VENDOR_ID, unpack,
 };
-use defmt::{error, info, unwrap, warn};
+use defmt::{error, info, trace, unwrap};
 use embassy_executor::Spawner;
 use embassy_stm32::usb::{Endpoint, In, Out};
 use embassy_stm32::{peripherals::USB, usb::Driver};
@@ -24,20 +24,20 @@ const DEVICE_INTERFACE_GUID: &str = "{19F2234B-041A-4811-B321-E288246821A7}";
 
 pub struct UsbDevice {
     usb_driver: Driver<'static, USB>,
-    rx_receiver: RxReceiver,
-    tx_sender: TxSender,
+    event_receiver: EventReceiver,
+    frame_sender: FrameSender,
 }
 
 impl UsbDevice {
     pub fn new(
         usb_driver: Driver<'static, USB>,
-        rx_receiver: RxReceiver,
-        tx_sender: TxSender,
+        event_receiver: EventReceiver,
+        frame_sender: FrameSender,
     ) -> Self {
         Self {
             usb_driver,
-            rx_receiver,
-            tx_sender,
+            event_receiver,
+            frame_sender,
         }
     }
 
@@ -102,14 +102,14 @@ impl UsbDevice {
 
         // As in CanBus::start, spawn failure is a double-start programming
         // error the device can't recover from, so panic via defmt.
-        spawner.spawn(unwrap!(read_task(read_ep, self.tx_sender)));
-        spawner.spawn(unwrap!(write_task(write_ep, self.rx_receiver)));
+        spawner.spawn(unwrap!(read_task(read_ep, self.frame_sender)));
+        spawner.spawn(unwrap!(write_task(write_ep, self.event_receiver)));
         spawner.spawn(unwrap!(usb_task(usb)));
     }
 }
 
 #[embassy_executor::task]
-async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, tx_sender: TxSender) {
+async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, frame_sender: FrameSender) {
     let mut buf = [0u8; MAX_PACKET_SIZE];
 
     loop {
@@ -120,9 +120,13 @@ async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, tx_sender: TxSender
             // A packet carries a whole number of frames back to back. A tail
             // that does not decode ends the packet: the frames before it are
             // sent, the rest is dropped.
+            //
+            // A full frame queue makes this wait, and the endpoint is not
+            // read again until it has room: the host's next packet is NAKed
+            // and no frame is lost.
             for frame in unpack::<Frame>(&buf[..len]) {
                 match frame {
-                    Ok(frame) => tx_sender.send(frame).await,
+                    Ok(frame) => frame_sender.send(frame).await,
                     Err(error) => error!("Dropped the rest of a USB packet: {}", error),
                 }
             }
@@ -133,20 +137,25 @@ async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, tx_sender: TxSender
 }
 
 #[embassy_executor::task]
-async fn write_task(mut write_ep: Endpoint<'static, USB, In>, rx_receiver: RxReceiver) {
+async fn write_task(mut write_ep: Endpoint<'static, USB, In>, event_receiver: EventReceiver) {
     let mut packer = Packer::new();
 
     loop {
-        let event = rx_receiver.receive().await;
+        let event = event_receiver.receive().await;
 
         // One event per packet for now. Every event fits an empty packet,
         // which the protocol crate's tests guarantee.
         packer.clear();
 
         match packer.push(&event) {
+            // While no host has the device configured, the write fails at
+            // once and the event is discarded here. That keeps the event
+            // queue draining, so a host that connects late gets current
+            // events rather than an overrun for frames from before it was
+            // there. Logged at trace because it happens once per event.
             Ok(()) => {
                 if let Err(error) = write_ep.write(packer.as_bytes()).await {
-                    warn!("Dropped {}, USB write failed: {}", event, error);
+                    trace!("Dropped {}, USB write failed: {}", event, error);
                 }
             }
             Err(error) => error!("Failed to encode {}: {}", event, error),

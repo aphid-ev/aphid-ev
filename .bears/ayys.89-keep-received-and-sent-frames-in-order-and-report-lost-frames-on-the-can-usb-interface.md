@@ -1,14 +1,15 @@
 ---
 id: ayys.89
 title: Keep received and sent frames in order and report lost frames on the CAN/USB interface
-status: open
+status: done
 priority: P1
 created: "2026-11-24T17:14:56.123236887Z"
-updated: "2026-11-24T17:14:56.123236887Z"
+updated: "2026-11-24T17:59:47.409880224Z"
 tags:
   - can-usb
 depends_on:
   - ayys.rv
+attempts: 1
 ---
 
 ## Summary
