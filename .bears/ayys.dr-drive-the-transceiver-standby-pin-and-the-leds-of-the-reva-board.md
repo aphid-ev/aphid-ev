@@ -1,12 +1,13 @@
 ---
 id: ayys.dr
 title: Drive the transceiver standby pin and the LEDs of the revA board
-status: open
+status: done
 priority: P1
 created: "2026-11-22T12:50:03.138254862Z"
-updated: "2026-11-24T17:14:39.999188268Z"
+updated: "2026-11-24T17:51:56.766602028Z"
 tags:
   - can-usb
+attempts: 1
 ---
 
 ## Summary
