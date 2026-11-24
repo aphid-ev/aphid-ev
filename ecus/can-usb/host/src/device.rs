@@ -2,10 +2,11 @@ use crate::transport::{NusbTransport, TransferError, Transport};
 use crate::{Error, Result};
 use can_usb_protocol::{
     BusEvent, Config, ControlRequest, DeviceInfo, Frame, INTERFACE, PRODUCT_ID, PROTOCOL_VERSION,
-    PackError, Packer, VENDOR_ID, unpack,
+    PackError, Packer, TimestampUnwrapper, VENDOR_ID, unpack,
 };
 use nusb::MaybeFuture;
 use std::collections::VecDeque;
+use std::fmt;
 use std::future::{Future, poll_fn};
 use std::pin::pin;
 use std::sync::Arc;
@@ -28,6 +29,29 @@ pub const OUT_TRANSFERS: usize = 4;
 /// [`BusEvent::Overrun`]. The library itself never drops an event.
 pub const EVENT_QUEUE_LIMIT: usize = 1024;
 
+/// A [`BusEvent`] with its time on a clock that does not wrap, from
+/// [`receive_timed`](UsbCanDevice::receive_timed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimedEvent {
+    /// The event's 32-bit timestamp, unwrapped: microseconds on the
+    /// interface's clock, counted up from the first event this
+    /// [`UsbCanDevice`] received. See [`UsbCanDevice`] for when it starts
+    /// over.
+    pub time_us: u64,
+    pub event: BusEvent,
+}
+
+impl fmt::Display for TimedEvent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:>13} us {}",
+            self.time_us,
+            self.event.without_timestamp()
+        )
+    }
+}
+
 /// One CAN/USB interface.
 ///
 /// Frames given to [`send`](Self::send) are packed into bulk OUT packets,
@@ -42,11 +66,33 @@ pub const EVENT_QUEUE_LIMIT: usize = 1024;
 /// [`receive`](Self::receive) are cancel-safe, so they can run under a
 /// timeout: a dropped `send` has not taken its frame, and a dropped
 /// `receive` has not lost an event.
+///
+/// # Time
+///
+/// Each event's 32-bit timestamp wraps after about 71.6 minutes.
+/// [`receive_timed`](Self::receive_timed) gives it unwrapped, as a `u64`
+/// that only goes up while this value lives. The first event received keeps
+/// its 32-bit value, and each wrap after it adds 2³² µs. Every event goes
+/// through the unwrapper in the order it arrived, whichever of the receive
+/// calls returns it.
+///
+/// - [`set_config`](Self::set_config) and [`start`](Self::start) do not
+///   restart the interface's clock, so the time carries on across them.
+/// - A new `UsbCanDevice`, as after a reconnect, starts its time over from
+///   its first event. Times from two of them cannot be compared.
+/// - The interface's clock restarts at 0 when it powers up or resets. That
+///   ends the USB connection, so this value only sees it as
+///   [`Error::Disconnected`]; the next one starts over as above.
+/// - Two events more than 2³² µs apart, on a bus quiet for that long, come
+///   out whole multiples of 2³² µs too close together. See
+///   [`can_usb_protocol::timestamp`].
 pub struct UsbCanDevice<T: Transport = NusbTransport> {
     transport: T,
     /// Events read from the interface but not yet returned by
     /// [`receive`](Self::receive), and the errors among them in their place.
-    events: VecDeque<Result<BusEvent>>,
+    events: VecDeque<Result<TimedEvent>>,
+    /// Gives the events in `events` their time, in the order they came.
+    clock: TimestampUnwrapper,
     /// The OUT packet being filled.
     packer: Packer,
     /// Frames in `packer`.
@@ -119,6 +165,7 @@ impl<T: Transport> UsbCanDevice<T> {
         let mut device = Self {
             transport,
             events: VecDeque::new(),
+            clock: TimestampUnwrapper::new(),
             packer: Packer::new(),
             packed: 0,
             in_flight: VecDeque::new(),
@@ -300,6 +347,12 @@ impl<T: Transport> UsbCanDevice<T> {
     /// interface is unplugged, the events received before it come first,
     /// then [`Error::Disconnected`].
     pub async fn receive(&mut self) -> Result<BusEvent> {
+        self.receive_timed().await.map(|timed| timed.event)
+    }
+
+    /// [`receive`](Self::receive), with the event's time unwrapped. See
+    /// [time](Self#time).
+    pub async fn receive_timed(&mut self) -> Result<TimedEvent> {
         poll_fn(|cx| {
             self.pump(cx, true);
 
@@ -314,11 +367,18 @@ impl<T: Transport> UsbCanDevice<T> {
     /// The next event if one has arrived, without waiting. Sends the packet
     /// being filled like [`receive`](Self::receive).
     pub fn try_receive(&mut self) -> Option<Result<BusEvent>> {
+        self.try_receive_timed()
+            .map(|result| result.map(|timed| timed.event))
+    }
+
+    /// [`try_receive`](Self::try_receive), with the event's time unwrapped.
+    /// See [time](Self#time).
+    pub fn try_receive_timed(&mut self) -> Option<Result<TimedEvent>> {
         self.pump(&mut Context::from_waker(Waker::noop()), true);
         self.next_event()
     }
 
-    fn next_event(&mut self) -> Option<Result<BusEvent>> {
+    fn next_event(&mut self) -> Option<Result<TimedEvent>> {
         self.events
             .pop_front()
             .or_else(|| self.disconnected.then_some(Err(Error::Disconnected)))
@@ -417,7 +477,7 @@ impl<T: Transport> UsbCanDevice<T> {
             // A read a dropped reset cancelled: what it brought is from
             // before the reset.
             _ if self.discard_in > 0 => self.discard_in -= 1,
-            Ok(packet) => unpack_into(&packet, &mut self.events),
+            Ok(packet) => unpack_into(&packet, &mut self.clock, &mut self.events),
             Err(error) => self.events.push_back(Err(error.into())),
         }
 
@@ -513,12 +573,22 @@ fn decode_device_info(bytes: &[u8]) -> Result<DeviceInfo> {
     Ok(DeviceInfo::decode(bytes)?)
 }
 
-/// Appends every event in `packet` to `events`, then the error for a
-/// malformed tail if there is one.
-fn unpack_into(packet: &[u8], events: &mut VecDeque<Result<BusEvent>>) {
-    for item in unpack(packet) {
+/// Appends every event in `packet` to `events` with its time from `clock`,
+/// then the error for a malformed tail if there is one.
+fn unpack_into(
+    packet: &[u8],
+    clock: &mut TimestampUnwrapper,
+    events: &mut VecDeque<Result<TimedEvent>>,
+) {
+    for item in unpack::<BusEvent>(packet) {
         let failed = item.is_err();
-        events.push_back(item.map_err(Error::from));
+        events.push_back(
+            item.map(|event| TimedEvent {
+                time_us: clock.extend(event.timestamp_us()),
+                event,
+            })
+            .map_err(Error::from),
+        );
 
         if failed {
             break;

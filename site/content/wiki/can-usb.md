@@ -307,7 +307,8 @@ than eight bytes fails to decode.
 
 Every event starts with its tag and a timestamp. The timestamp is the
 interface's clock in microseconds, as four little-endian bytes. It wraps
-after 2³² µs, about 71.6 minutes, and the host unwraps it.
+after 2³² µs, about 71.6 minutes, and the host library unwraps it, see
+[time](#time).
 
 | Tag | Event | Fields after the timestamp |
 | --- | --- | --- |
@@ -455,6 +456,29 @@ things can still cross over:
 `stop()` does not wait for the OUT transfers, so it also gets a program out
 of a bus where nothing acknowledges.
 
+### Time {#time}
+
+`receive_timed()` and `try_receive_timed()` return each event together
+with its time as a 64-bit count of microseconds that does not wrap.
+`receive()` and `try_receive()` return the event alone, with only its
+32-bit timestamp. The crate's `TimestampUnwrapper` computes the time. It
+gets every event in the order it arrived, whichever call returns it.
+Events come in the order they happened, so a timestamp smaller than the
+one before it means the interface's clock wrapped in between, and the
+unwrapper adds 2³² µs from there on. The first event keeps its 32-bit
+value.
+
+- Set config and start bus do not restart the interface's clock, so the
+  time runs on across `set_config()` and `start()`.
+- A new connection, from `open()` or `connect()`, starts its time over from
+  its first event. Times from two connections cannot be compared.
+- The interface's clock restarts at 0 when it powers up. A power cycle
+  ends the USB connection, so the program sees a disconnect and has to open
+  the interface again, which starts the time over.
+- The unwrapper sees a wrap only through the events on each side of it.
+  If the bus is quiet for 2³² µs or longer, the two events around the gap
+  come out a whole number of 71.6-minute periods too close together.
+
 The manager flushes after each frame it sends, so its bootloader traffic
 goes out one frame per packet.
 
@@ -465,7 +489,7 @@ The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 | Command | What it does |
 | --- | --- |
 | `can-usb info` | Prints the protocol version, the firmware version and the serial number |
-| `can-usb listen` | Prints every frame and bus error with its timestamp |
+| `can-usb listen` | Prints every event with its time in microseconds, unwrapped |
 | `can-usb ping` | Sends a frame every 5 seconds and prints the next event |
 | `can-usb throughput` | Sends frames as fast as the interface takes them and prints what came back |
 
@@ -496,7 +520,8 @@ example because no node acknowledges, it stops sending. It prints:
   overrun events, how many bus errors it saw, and how many frames came back
   out of sequence,
 - the receive rate on the interface's clock, from the first frame back to
-  the last, and the bus load that rate makes at the configured bit rate.
+  the last with the unwrapped time, and the bus load that rate makes at the
+  configured bit rate.
 
 The bus load counts each frame's nominal bits, 111 for a standard 8-byte
 frame including the interframe space, without stuff bits. Stuffing adds up

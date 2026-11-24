@@ -57,8 +57,8 @@ async fn info(usb_can: &UsbCanDevice) -> Result<()> {
 
 async fn listen(mut usb_can: UsbCanDevice) -> Result<()> {
     loop {
-        let frame = usb_can.receive().await?;
-        println!("{frame}");
+        let event = usb_can.receive_timed().await?;
+        println!("{event}");
     }
 }
 
@@ -97,7 +97,7 @@ async fn throughput(mut usb_can: UsbCanDevice, bitrate: Bitrate, count: u32) -> 
         }
         sent += 1;
 
-        while let Some(event) = usb_can.try_receive() {
+        while let Some(event) = usb_can.try_receive_timed() {
             tally.add(event?);
         }
     }
@@ -108,7 +108,7 @@ async fn throughput(mut usb_can: UsbCanDevice, bitrate: Bitrate, count: u32) -> 
     }
 
     while tally.frames < u64::from(count) {
-        match timeout(IDLE, usb_can.receive()).await {
+        match timeout(IDLE, usb_can.receive_timed()).await {
             Ok(event) => tally.add(event?),
             Err(_) => break,
         }
