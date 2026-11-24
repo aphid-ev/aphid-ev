@@ -1,10 +1,10 @@
 ---
 id: ayys.qu
 title: Bring in the CAN/USB dongle's KiCad project
-status: open
+status: done
 priority: P1
 created: "2026-11-22T11:01:38.870242803Z"
-updated: "2026-11-22T11:01:38.870242803Z"
+updated: "2026-11-24T17:32:34.269183118Z"
 tags:
   - manual
   - can-usb
@@ -22,3 +22,5 @@ The dongle's KiCad project lives in another repository. Copy it into `ecus/can-u
 
 ## Expected result
 `just can-usb ci-hardware` passes, and the README and `can-usb` wiki page point at the board.
+## Pin check (2026-11-24)
+Done during planning from `can-usb.kicad_sch`: USB PA11/PA12, FDCAN1 RX PB8 / TX PB9 and the 16 MHz HSE match the firmware. New on this board: TJA1042 STB on PC13, LED_ERR PA5, LED_TX PA6, LED_RX PA7, a debug UART on PB6/PB7 and SWO on PB3. The firmware side is task `ayys.dr`.
