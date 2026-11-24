@@ -160,6 +160,9 @@ the node, and skips blocks that are all `0xff`. For `can-echo`,
 | `0x7e0` + node | Bootloader command | Programming device | 0, 4 or 8 |
 | `0x7d0` + node | Block data | Programming device | 2 to 8 |
 
+`0x7cf`, just below these, is not a bootloader frame. It is kept free for
+bus tests such as `can-usb ping` against `can-echo` (see [[can-usb]]).
+
 ## `0x7ff` wakeup
 
 The node sends this frame once when it starts. It then waits 500 ms for

@@ -34,6 +34,13 @@ pub const COMMAND_BASE_ID: u16 = 0x7e0;
 /// Block data, `BLOCK_DATA_BASE_ID + node`.
 pub const BLOCK_DATA_BASE_ID: u16 = 0x7d0;
 
+/// Not a bootloader frame: kept free for bus tests, such as `can-usb ping`
+/// against a node running `can-echo`. It sits just below the bootloader's
+/// identifiers, so test traffic never looks like a bootloader frame, and it
+/// is not one of the OBD-II diagnostic identifiers (`0x7df`, `0x7e0` to
+/// `0x7ef`).
+pub const BUS_TEST_ID: u16 = 0x7cf;
+
 /// How long a node waits for **Catch bootloader** after its wakeup frame
 /// before it starts the application.
 pub const WAKEUP_WINDOW_MS: u32 = 500;
@@ -162,6 +169,15 @@ mod tests {
 
         assert_eq!(ids.len(), count);
         assert!(ids.iter().all(|id| *id <= 0x7ff));
+    }
+
+    /// The bus test identifier must not be mistaken for a bootloader frame
+    /// of any node, the programming device included.
+    #[test]
+    fn bus_test_identifier_is_outside_the_bootloader_range() {
+        let bootloader = BLOCK_DATA_BASE_ID..=WAKEUP_ID;
+
+        assert!(!bootloader.contains(&BUS_TEST_ID));
     }
 
     /// The programming device never runs a bootloader, which is what makes
