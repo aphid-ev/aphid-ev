@@ -34,7 +34,9 @@
 //! ```
 //!
 //! A sender that drains a queue uses [`Packer::fill`], which stops at the
-//! first value that does not fit and hands it back for the next packet.
+//! first value that does not fit and hands it back for the next packet, or
+//! [`Batcher`](crate::Batcher), which also keeps that value for the next
+//! packet.
 //!
 //! Bulk IN packets are at most [`BULK_IN_PACKET_LIMIT`] bytes, one short of
 //! the endpoint's maximum, so that each one ends its USB transfer. See that
@@ -407,26 +409,6 @@ mod tests {
         );
     }
 
-    /// Drains `queue` into packets the way the firmware's write task does:
-    /// a packet starts with the value left over from the last one.
-    fn fill_all(packer: &mut Packer, queue: &mut VecDeque<BusEvent>) -> Vec<Vec<u8>> {
-        let mut packets = Vec::new();
-        let mut carry = None;
-
-        while let Some(first) = carry.take().or_else(|| queue.pop_front()) {
-            packer.clear();
-            let values = core::iter::once(first).chain(core::iter::from_fn(|| queue.pop_front()));
-            carry = packer.fill(values, |_, error| panic!("rejected: {error}"));
-            packets.push(packer.as_bytes().to_vec());
-        }
-
-        packets
-    }
-
-    fn overrun(timestamp_us: u32, lost: u16) -> BusEvent {
-        BusEvent::Overrun { timestamp_us, lost }
-    }
-
     #[test]
     fn fill_packs_every_queued_value_that_fits() {
         let mut queue: VecDeque<_> = (0..3).map(event).collect();
@@ -494,53 +476,6 @@ mod tests {
         assert_eq!(carry, None);
         assert_eq!(rejected, [(64, PackError::TooLarge)]);
         assert_eq!(packer.as_bytes(), [2, 1, 1]);
-    }
-
-    /// A burst larger than one packet: full packets, each short of the
-    /// endpoint's maximum, then the rest, with every event in order.
-    #[test]
-    fn a_burst_is_split_into_short_packets_in_order() {
-        let mut events: Vec<_> = (0..40).map(event).collect();
-        events.insert(17, overrun(17, 300));
-        events.push(BusEvent::BusError {
-            timestamp_us: 99,
-            error: BusError::Crc,
-        });
-        let mut queue: VecDeque<_> = events.iter().copied().collect();
-
-        let packets = fill_all(&mut Packer::with_limit(BULK_IN_PACKET_LIMIT), &mut queue);
-
-        assert!(packets.len() > 1);
-        assert!(packets.iter().all(|packet| !packet.is_empty()));
-        assert!(packets.iter().all(|packet| packet.len() < MAX_PACKET_SIZE));
-
-        let received: Vec<BusEvent> = packets
-            .iter()
-            .flat_map(|packet| unpack(packet))
-            .collect::<Result<_, _>>()
-            .unwrap();
-        assert_eq!(received, events);
-    }
-
-    /// Four 16-byte events would fill 64 bytes exactly. The bulk IN limit
-    /// moves the fourth to the next packet, so no packet is full size.
-    #[test]
-    fn the_bulk_in_limit_never_builds_a_full_size_packet() {
-        let sixteen = BusEvent::Frame {
-            timestamp_us: 0,
-            frame: frame(0x123, 7),
-        };
-        assert_eq!(postcard::to_allocvec(&sixteen).unwrap().len(), 16);
-
-        let mut full = Packer::new();
-        let mut queue: VecDeque<_> = core::iter::repeat_n(sixteen, 4).collect();
-        assert_eq!(
-            fill_all(&mut full, &mut queue.clone())[0].len(),
-            MAX_PACKET_SIZE
-        );
-
-        let packets = fill_all(&mut Packer::with_limit(BULK_IN_PACKET_LIMIT), &mut queue);
-        assert_eq!(packets.iter().map(Vec::len).collect::<Vec<_>>(), [48, 16]);
     }
 
     #[test]
