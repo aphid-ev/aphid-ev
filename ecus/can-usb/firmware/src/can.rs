@@ -1,4 +1,5 @@
-use crate::{RxSender, TxReceiver};
+use crate::board::Transceiver;
+use crate::{RxSender, TxReceiver, leds};
 use can_usb_protocol::{BusError, BusEvent, Frame};
 use defmt::{debug, error, unwrap, warn};
 use embassy_executor::Spawner;
@@ -7,6 +8,7 @@ use embassy_time::Instant;
 
 pub struct CanBus {
     can_config: CanConfigurator<'static>,
+    transceiver: Transceiver,
     rx_sender: RxSender,
     tx_receiver: TxReceiver,
 }
@@ -14,22 +16,32 @@ pub struct CanBus {
 impl CanBus {
     pub fn new(
         can: CanConfigurator<'static>,
+        transceiver: Transceiver,
         rx_sender: RxSender,
         tx_receiver: TxReceiver,
     ) -> Self {
         Self {
             can_config: can,
+            transceiver,
             rx_sender,
             tx_receiver,
         }
     }
 
-    pub fn start(mut self, spawner: Spawner) {
+    /// Takes the transceiver out of standby, starts FDCAN1 and spawns the
+    /// receive and transmit tasks. The caller holds the returned
+    /// [`Transceiver`] for as long as the bus runs: dropping it puts the
+    /// transceiver back in standby.
+    #[must_use = "dropping the transceiver puts it in standby"]
+    pub fn start(mut self, spawner: Spawner) -> Transceiver {
         self.can_config.properties().set_standard_filter(
             filter::StandardFilterSlot::_0,
             filter::StandardFilter::accept_all_into_fifo0(),
         );
         self.can_config.set_bitrate(500_000);
+        // The FDCAN pins are configured, so the transceiver may leave
+        // standby before FDCAN1 leaves init.
+        self.transceiver.wake();
         let can = self.can_config.start(OperatingMode::NormalOperationMode);
         let (can_tx, can_rx, _) = can.split();
 
@@ -38,6 +50,8 @@ impl CanBus {
         // device is useless without these tasks, so panic via defmt.
         spawner.spawn(unwrap!(rx_task(can_rx, self.rx_sender)));
         spawner.spawn(unwrap!(tx_task(can_tx, self.tx_receiver)));
+
+        self.transceiver
     }
 }
 
@@ -46,6 +60,7 @@ async fn rx_task(mut can_rx: CanRx<'static>, rx_sender: RxSender) {
     loop {
         match can_rx.read().await {
             Ok(envelope) => {
+                leds::RX.trigger();
                 let frame = Frame::from_can(&envelope.frame);
                 debug!("Received frame: {}", frame);
                 rx_sender
@@ -57,6 +72,7 @@ async fn rx_task(mut can_rx: CanRx<'static>, rx_sender: RxSender) {
             }
             Err(error) => {
                 let timestamp_us = timestamp_us(Instant::now());
+                leds::ERR.trigger();
                 let error = bus_error(error);
                 error!("CAN read error: {}", error);
                 rx_sender
@@ -82,7 +98,9 @@ async fn tx_task(mut can_tx: CanTx<'static>, tx_receiver: TxReceiver) {
             // mailbox to make room. That frame never reaches the bus, so say
             // so rather than discarding it silently.
             Some(can_frame) => {
-                if let Some(dropped) = can_tx.write(&can_frame).await {
+                let dropped = can_tx.write(&can_frame).await;
+                leds::TX.trigger();
+                if let Some(dropped) = dropped {
                     warn!("TX mailbox full, dropped {}", Frame::from_can(&dropped));
                 }
             }

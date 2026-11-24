@@ -45,7 +45,10 @@ impl UsbDevice {
         let mut config = embassy_usb::Config::new(VENDOR_ID, PRODUCT_ID);
         config.manufacturer = Some("Aphid-ev");
         config.product = Some("can-interface");
-        config.serial_number = Some("1");
+        // The 96-bit unique ID as 24 uppercase hex digits, byte 0 (lowest
+        // address) first: the same bytes, in the same order, as
+        // DeviceInfo::serial.
+        config.serial_number = Some(embassy_stm32::uid::uid_hex());
         config.max_power = 100;
         config.max_packet_size_0 = MAX_PACKET_SIZE as u8;
 
