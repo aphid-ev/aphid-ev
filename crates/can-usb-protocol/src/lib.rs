@@ -6,6 +6,8 @@
 //!   Each bulk packet is a whole number of postcard values, built with a
 //!   [`Packer`] and read with [`unpack`] (see [`packet`]).
 //! - Control requests carry [`DeviceInfo`] and [`Config`].
+//! - [`Batcher`] builds IN packets from the interface's event queue, and
+//!   [`DropTracker`] accounts for events a failed write drops (see [`batch`]).
 //! - [`OverrunCounter`] turns received frames the interface could not queue
 //!   into one [`BusEvent::Overrun`] (see [`overrun`]).
 //!
@@ -16,6 +18,7 @@
 // Tests link the standard test harness, so std is only excluded otherwise.
 #![cfg_attr(not(test), no_std)]
 
+pub mod batch;
 mod bus_error;
 mod bus_event;
 mod control;
@@ -24,6 +27,7 @@ pub mod overrun;
 pub mod packet;
 pub mod usb;
 
+pub use batch::{Batcher, DropLog, DropTracker};
 pub use bus_error::*;
 pub use bus_event::*;
 pub use control::*;
