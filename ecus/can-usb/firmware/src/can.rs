@@ -95,8 +95,14 @@ async fn tx_task(mut can_tx: CanTx<'static>, tx_receiver: TxReceiver) {
 }
 
 /// The protocol's timestamp: the embassy clock in microseconds, wrapping at
-/// 2^32. The driver stamps each received frame from the FDCAN timestamp
-/// counter, converted to embassy time. With the 1 MHz tick it resolves 1 us.
+/// 2^32, with 1 us resolution from the 1 MHz tick.
+///
+/// A received frame's `envelope.ts` is in effect the moment this firmware
+/// read it out of the FDCAN RX FIFO, so it lags the frame's arrival by the
+/// time the frame waited there. embassy-stm32 0.6 tries to correct it with
+/// the FDCAN timestamp counter, but that counter counts bit times while the
+/// driver converts it as time quanta, so the correction is about a thousand
+/// times too small to matter.
 fn timestamp_us(instant: Instant) -> u32 {
     instant.as_micros() as u32
 }
