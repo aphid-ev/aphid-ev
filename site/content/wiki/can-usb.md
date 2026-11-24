@@ -126,8 +126,8 @@ whether or not a program opens it. From then on the queue fills while no
 program reads. Start bus and set config clear it, together with the
 overrun count, and the host library sends set config and start bus when
 it opens the interface. A program that opens it later starts with an empty queue, except
-for at most one packet of up to three old events that the firmware had
-already handed to the USB controller.
+for at most one packet of old events, up to `BULK_IN_PACKET_LIMIT` bytes,
+that the firmware had already handed to the USB controller.
 
 ## Bus state and bus-off {#bus-state}
 
