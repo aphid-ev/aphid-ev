@@ -2,7 +2,47 @@
 //! [`ControlRequest`](crate::ControlRequest)).
 
 use core::fmt;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+
+/// Why a control request's payload could not be encoded or decoded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum PayloadError {
+    /// The bytes are not a value of the expected type: truncated, or with a
+    /// tag this protocol does not know.
+    Malformed,
+    /// The bytes hold a whole value and then more. The payload is one value,
+    /// so the extra bytes mean the peer meant something else.
+    TrailingBytes,
+    /// The encoded value does not fit the buffer.
+    BufferTooSmall,
+}
+
+impl fmt::Display for PayloadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Malformed => "the payload does not decode",
+            Self::TrailingBytes => "the payload has bytes after its value",
+            Self::BufferTooSmall => "the payload does not fit the buffer",
+        })
+    }
+}
+
+impl core::error::Error for PayloadError {}
+
+fn encode<T: Serialize>(value: &T, buf: &mut [u8]) -> Result<usize, PayloadError> {
+    postcard::to_slice(value, buf)
+        .map(|bytes| bytes.len())
+        .map_err(|_| PayloadError::BufferTooSmall)
+}
+
+fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, PayloadError> {
+    match postcard::take_from_bytes(bytes) {
+        Ok((value, [])) => Ok(value),
+        Ok(_) => Err(PayloadError::TrailingBytes),
+        Err(_) => Err(PayloadError::Malformed),
+    }
+}
 
 /// What the interface reports about itself in answer to
 /// [`ControlRequest::GetDeviceInfo`](crate::ControlRequest::GetDeviceInfo).
@@ -22,6 +62,35 @@ pub struct DeviceInfo {
 
 impl DeviceInfo {
     pub const SERIAL_LEN: usize = 12;
+
+    /// The largest encoding of a device info, in bytes: three varints of up
+    /// to three bytes each for the versions, and the serial.
+    pub const MAX_ENCODED_LEN: usize = 3 + 3 * 3 + Self::SERIAL_LEN;
+
+    /// Writes the payload of a
+    /// [`GetDeviceInfo`](crate::ControlRequest::GetDeviceInfo) answer to
+    /// `buf` and returns its length, at most
+    /// [`MAX_ENCODED_LEN`](Self::MAX_ENCODED_LEN).
+    pub fn encode(&self, buf: &mut [u8]) -> Result<usize, PayloadError> {
+        encode(self, buf)
+    }
+
+    /// Reads a [`GetDeviceInfo`](crate::ControlRequest::GetDeviceInfo)
+    /// answer of this protocol version. Check
+    /// [`protocol_version_of`](Self::protocol_version_of) first: a device of
+    /// another version may send something this does not decode, or worse,
+    /// something it misreads.
+    pub fn decode(bytes: &[u8]) -> Result<Self, PayloadError> {
+        decode(bytes)
+    }
+
+    /// The protocol version at the start of a device info payload, readable
+    /// whatever the version, because it is always the first field.
+    pub fn protocol_version_of(bytes: &[u8]) -> Result<u16, PayloadError> {
+        postcard::take_from_bytes::<u16>(bytes)
+            .map(|(version, _)| version)
+            .map_err(|_| PayloadError::Malformed)
+    }
 }
 
 /// Semantic version of the firmware, from its `Cargo.toml`.
@@ -105,6 +174,33 @@ pub struct Config {
     pub mode: Mode,
 }
 
+impl Config {
+    /// [`Config::default`], as a constant: 500 kbit/s, normal mode.
+    pub const DEFAULT: Self = Self {
+        bitrate: Bitrate::Kbit500,
+        mode: Mode::Normal,
+    };
+
+    /// The largest encoding of a config, in bytes.
+    pub const MAX_ENCODED_LEN: usize = 2;
+
+    /// The payload of a [`SetConfig`](crate::ControlRequest::SetConfig)
+    /// request.
+    pub fn encode(&self) -> ([u8; Self::MAX_ENCODED_LEN], usize) {
+        let mut buf = [0; Self::MAX_ENCODED_LEN];
+        // Each field is a tag below 128, one byte each, so it always fits.
+        let len = encode(self, &mut buf).unwrap_or(0);
+        (buf, len)
+    }
+
+    /// Reads a [`SetConfig`](crate::ControlRequest::SetConfig) payload. A
+    /// bit rate or mode this protocol does not know, a short payload and
+    /// bytes after the config are all errors.
+    pub fn decode(bytes: &[u8]) -> Result<Self, PayloadError> {
+        decode(bytes)
+    }
+}
+
 /// Classic CAN bit rates the interface supports. Encoded by position.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -158,6 +254,20 @@ pub enum Mode {
 
 impl Mode {
     pub const ALL: [Self; 3] = [Self::Normal, Self::ListenOnly, Self::InternalLoopback];
+
+    /// Whether the interface sends the host's frames in this mode. In
+    /// listen-only mode it discards them.
+    pub const fn transmits(self) -> bool {
+        matches!(self, Self::Normal | Self::InternalLoopback)
+    }
+
+    /// Whether the interface connects to the bus in this mode, taking the
+    /// transceiver out of standby. In internal loopback the transceiver stays
+    /// in standby, so nothing reaches the bus even if the controller's TX pin
+    /// were driven.
+    pub const fn connects_to_bus(self) -> bool {
+        matches!(self, Self::Normal | Self::ListenOnly)
+    }
 }
 
 #[cfg(test)]
@@ -214,7 +324,10 @@ mod tests {
             serial: [0xff; DeviceInfo::SERIAL_LEN],
         };
 
-        assert!(postcard::to_allocvec(&largest).unwrap().len() <= MAX_PACKET_SIZE);
+        let len = postcard::to_allocvec(&largest).unwrap().len();
+
+        assert_eq!(len, DeviceInfo::MAX_ENCODED_LEN);
+        assert!(len <= MAX_PACKET_SIZE);
     }
 
     #[test]
@@ -243,6 +356,7 @@ mod tests {
 
     #[test]
     fn default_config_is_500_kbit_normal() {
+        assert_eq!(Config::DEFAULT, Config::default());
         assert_eq!(
             Config::default(),
             Config {
@@ -275,6 +389,89 @@ mod tests {
 
         assert_eq!(Bitrate::from_bits_per_second(100_000), None);
         assert_eq!(Bitrate::Mbit1.to_string(), "1000 kbit/s");
+    }
+
+    #[test]
+    fn config_payload_round_trips() {
+        for bitrate in Bitrate::ALL {
+            for mode in Mode::ALL {
+                let config = Config { bitrate, mode };
+                let (buf, len) = config.encode();
+
+                assert_eq!(len, 2);
+                assert_eq!(&buf[..len], postcard::to_allocvec(&config).unwrap());
+                assert_eq!(Config::decode(&buf[..len]), Ok(config));
+            }
+        }
+    }
+
+    #[test]
+    fn config_payload_must_be_exactly_one_config() {
+        assert_eq!(Config::decode(&[]), Err(PayloadError::Malformed));
+        assert_eq!(Config::decode(&[2]), Err(PayloadError::Malformed));
+        assert_eq!(Config::decode(&[4, 0]), Err(PayloadError::Malformed));
+        assert_eq!(Config::decode(&[0, 3]), Err(PayloadError::Malformed));
+        assert_eq!(Config::decode(&[2, 0, 0]), Err(PayloadError::TrailingBytes));
+    }
+
+    #[test]
+    fn device_info_payload_round_trips() {
+        let mut buf = [0; MAX_PACKET_SIZE];
+        let len = device_info().encode(&mut buf).unwrap();
+
+        assert_eq!(&buf[..len], postcard::to_allocvec(&device_info()).unwrap());
+        assert_eq!(DeviceInfo::decode(&buf[..len]), Ok(device_info()));
+        assert_eq!(DeviceInfo::protocol_version_of(&buf[..len]), Ok(1));
+    }
+
+    #[test]
+    fn device_info_does_not_fit_a_short_buffer() {
+        let mut buf = [0; 10];
+
+        assert_eq!(
+            device_info().encode(&mut buf),
+            Err(PayloadError::BufferTooSmall)
+        );
+    }
+
+    #[test]
+    fn malformed_device_info_is_rejected() {
+        let bytes = postcard::to_allocvec(&device_info()).unwrap();
+
+        assert_eq!(DeviceInfo::decode(&[]), Err(PayloadError::Malformed));
+        assert_eq!(
+            DeviceInfo::decode(&bytes[..bytes.len() - 1]),
+            Err(PayloadError::Malformed)
+        );
+        assert_eq!(
+            DeviceInfo::decode(&[bytes.as_slice(), &[0]].concat()),
+            Err(PayloadError::TrailingBytes)
+        );
+        assert_eq!(
+            DeviceInfo::protocol_version_of(&[]),
+            Err(PayloadError::Malformed)
+        );
+    }
+
+    /// A host must be able to read the version of a device whose info it
+    /// cannot otherwise decode.
+    #[test]
+    fn the_protocol_version_reads_from_any_later_layout() {
+        assert_eq!(DeviceInfo::protocol_version_of(&[2]), Ok(2));
+        assert_eq!(
+            DeviceInfo::protocol_version_of(&[0xac, 0x02, 0xff]),
+            Ok(300)
+        );
+    }
+
+    #[test]
+    fn listen_only_neither_transmits_nor_loopback_connects() {
+        assert!(Mode::Normal.transmits());
+        assert!(Mode::Normal.connects_to_bus());
+        assert!(!Mode::ListenOnly.transmits());
+        assert!(Mode::ListenOnly.connects_to_bus());
+        assert!(Mode::InternalLoopback.transmits());
+        assert!(!Mode::InternalLoopback.connects_to_bus());
     }
 
     #[test]

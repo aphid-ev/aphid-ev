@@ -106,6 +106,16 @@ impl<T: Serialize> Batcher<T> {
     pub fn count(&self) -> usize {
         self.count
     }
+
+    /// Drops the last packet and the value carried over, as when the queue
+    /// they came from was cleared, and returns how many values that was.
+    pub fn discard(&mut self) -> usize {
+        let discarded = self.count + usize::from(self.carry.take().is_some());
+
+        self.packer.clear();
+        self.count = 0;
+        discarded
+    }
 }
 
 /// What a [`DropTracker`] asks the sender to log.
@@ -420,6 +430,33 @@ mod tests {
             [DropLog::Started, resumed, DropLog::Started, resumed]
         );
         assert_eq!(sender.received(), [event(100), event(101)]);
+    }
+
+    /// The queue was cleared while a packet waited to be written: the
+    /// packet and the carried event go, and the next packet holds only
+    /// events queued after the clear.
+    #[test]
+    fn discard_drops_the_packet_and_the_carry() {
+        let mut sender = Sender::new((0..10).map(event));
+
+        sender.step(false);
+        sender.queue.clear();
+
+        assert_eq!(sender.batcher.discard(), 4);
+        assert!(!sender.batcher.has_carry());
+        assert_eq!(sender.batcher.count(), 0);
+        assert!(sender.batcher.packet().is_empty());
+
+        sender.queue.push_back(event(100));
+        sender.run(true);
+        assert_eq!(sender.received(), [event(100)]);
+    }
+
+    #[test]
+    fn discard_of_an_empty_batcher_drops_nothing() {
+        let mut batcher = Batcher::<BusEvent>::new(BULK_IN_PACKET_LIMIT);
+
+        assert_eq!(batcher.discard(), 0);
     }
 
     #[test]

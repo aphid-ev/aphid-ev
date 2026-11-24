@@ -5,7 +5,8 @@
 //! - Bulk OUT carries [`Frame`]s to transmit; bulk IN carries [`BusEvent`]s.
 //!   Each bulk packet is a whole number of postcard values, built with a
 //!   [`Packer`] and read with [`unpack`] (see [`packet`]).
-//! - Control requests carry [`DeviceInfo`] and [`Config`].
+//! - Control requests carry [`DeviceInfo`] and [`Config`]. A [`Controller`]
+//!   decides what the interface does with each one (see [`controller`]).
 //! - [`Batcher`] builds IN packets from the interface's event queue, and
 //!   [`DropTracker`] accounts for events a failed write drops (see [`batch`]).
 //! - [`OverrunCounter`] turns received frames the interface could not queue
@@ -22,6 +23,7 @@ pub mod batch;
 mod bus_error;
 mod bus_event;
 mod control;
+pub mod controller;
 mod frame;
 pub mod overrun;
 pub mod packet;
@@ -31,6 +33,7 @@ pub use batch::{Batcher, DropLog, DropTracker};
 pub use bus_error::*;
 pub use bus_event::*;
 pub use control::*;
+pub use controller::{BusCommand, Controller, Rejection};
 pub use frame::*;
 pub use overrun::{Forwarded, OverrunCounter};
 pub use packet::{PackError, Packer, UnpackError, Unpacker, unpack};
