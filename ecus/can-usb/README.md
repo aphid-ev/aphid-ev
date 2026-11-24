@@ -5,8 +5,10 @@ USB adapter for talking to the vehicle's CAN bus from a computer. See
 
 - `hardware/` — KiCad project for the board.
 - `firmware/` — embassy firmware for the STM32G431CB, a standalone cargo
-  workspace. No board revision has been tagged yet; the pins it uses are
-  USB on PA11/PA12 and FDCAN1 on PB8/PB9, with a 16 MHz crystal.
+  workspace. It supports `can-usb-hw-revA` only, the board in `hardware/`.
+  Pins: USB on PA11/PA12, FDCAN1 on PB8/PB9, transceiver standby on PC13,
+  LEDs RX on PA7, TX on PA6 and ERR on PA5, with a 16 MHz crystal. They are
+  named in `firmware/src/board.rs` and nowhere else.
 - `host/` — host-side USB library, a member of the host workspace, used by
   the manager app. It also builds `can-usb`, a test CLI.
 - `host/70-can-usb.rules` — udev rule for access without root on Linux.
