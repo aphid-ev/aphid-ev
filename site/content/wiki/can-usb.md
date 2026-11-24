@@ -490,7 +490,7 @@ The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 | --- | --- |
 | `can-usb info` | Prints the protocol version, the firmware version and the serial number |
 | `can-usb listen` | Prints every event with its time in microseconds, unwrapped |
-| `can-usb ping` | Sends a frame every 5 seconds and prints the next event |
+| `can-usb ping` | Sends a frame every 5 seconds and prints the events up to its echo |
 | `can-usb throughput` | Sends frames as fast as the interface takes them and prints what came back |
 
 Every command first sets the config from two options:
@@ -501,10 +501,23 @@ Every command first sets the config from two options:
 | `--mode`, `-m` | `normal`, `listen-only` or `loopback` | `normal` |
 
 `ping` and `throughput` need another node on the bus to answer, such as an
-ECU running the `can-echo` test application. With `--mode loopback` the
-interface answers itself. They send on `0x7cf`, which is
+ECU running the `can-echo` test application. They send on `0x7cf`, which is
 kept free for bus tests just below the identifiers of the
-[[bootloader|CAN bootloader]]. It is `BUS_TEST_ID` in `crates/boot-protocol`.
+[[bootloader|CAN bootloader]]. `can-echo` answers a frame on `0x7cf` with
+the same data on `0x7ce`, and the two commands wait for the answers there.
+The constants are `BUS_TEST_ID` and `BUS_TEST_ECHO_ID` in
+`crates/boot-protocol`.
+
+The answer needs its own identifier. `throughput` keeps the interface's
+transmit buffers full, so the interface starts a frame as soon as the bus
+is idle, and so does `can-echo` with its answer. On the same identifier the
+two frames would tie in arbitration and then differ in the data, which is
+a bit error. The error frames would repeat until both nodes went bus-off.
+On `0x7ce` the answer wins arbitration and the interface's frame waits for
+it.
+
+With `--mode loopback` the interface receives its own frames, so the
+commands wait for them on `0x7cf`.
 
 ## Throughput
 
@@ -526,6 +539,11 @@ example because no node acknowledges, it stops sending. It prints:
 The bus load counts each frame's nominal bits, 111 for a standard 8-byte
 frame including the interframe space, without stuff bits. Stuffing adds up
 to about a fifth more, so a saturated bus can show less than 100 %.
+
+Against `can-echo` the interface receives only the answers, so the rate
+and the bus load are those of the answers. The frames the interface sent
+take the same share of the bus again, so a saturated bus shows a load of
+at most about 50 %.
 
 Measured on the bench:
 

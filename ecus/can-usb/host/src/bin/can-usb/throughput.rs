@@ -1,7 +1,23 @@
 //! What `can-usb throughput` counts and how it turns that into a rate.
 
+use boot_protocol::{BUS_TEST_ECHO_ID, BUS_TEST_ID};
 use can_usb_host::TimedEvent;
-use can_usb_protocol::{BusEvent, Frame, FrameId};
+use can_usb_protocol::{BusEvent, Frame, FrameId, Mode};
+
+/// The identifier test frames come back on. In internal loopback the
+/// interface receives its own frames on [`BUS_TEST_ID`]; on a bus,
+/// `can-echo` answers them on [`BUS_TEST_ECHO_ID`].
+pub fn echo_id(mode: Mode) -> u16 {
+    match mode {
+        Mode::InternalLoopback => BUS_TEST_ID,
+        Mode::Normal | Mode::ListenOnly => BUS_TEST_ECHO_ID,
+    }
+}
+
+/// Whether `event` is the answer to a test frame.
+pub fn is_echo(event: &BusEvent, echo_id: u16) -> bool {
+    matches!(event, BusEvent::Frame { frame, .. } if frame.id() == FrameId::Standard(echo_id))
+}
 
 /// The `n`th test frame: eight bytes, the sequence number first, so the
 /// receiver can tell whether frames come back in order.
@@ -46,7 +62,8 @@ pub struct Tally {
 }
 
 impl Tally {
-    /// A tally that checks the sequence of frames with `test_id`.
+    /// A tally that checks the sequence of frames with `test_id`, the
+    /// [`echo_id`] of the test frames.
     pub fn new(test_id: u16) -> Self {
         Self {
             test_id,
@@ -102,7 +119,32 @@ mod tests {
     use super::*;
     use can_usb_protocol::BusState;
 
-    const ID: u16 = 0x7cf;
+    const ID: u16 = BUS_TEST_ECHO_ID;
+
+    #[test]
+    fn echoes_come_back_on_the_echo_id_except_in_loopback() {
+        assert_eq!(echo_id(Mode::InternalLoopback), BUS_TEST_ID);
+        assert_eq!(echo_id(Mode::Normal), BUS_TEST_ECHO_ID);
+        assert_eq!(echo_id(Mode::ListenOnly), BUS_TEST_ECHO_ID);
+    }
+
+    #[test]
+    fn only_a_frame_on_the_echo_id_is_an_echo() {
+        let on = |id: u16| BusEvent::Frame {
+            timestamp_us: 0,
+            frame: test_frame(id, 0),
+        };
+
+        assert!(is_echo(&on(BUS_TEST_ECHO_ID), BUS_TEST_ECHO_ID));
+        assert!(!is_echo(&on(BUS_TEST_ID), BUS_TEST_ECHO_ID));
+        assert!(!is_echo(
+            &BusEvent::BusError {
+                timestamp_us: 0,
+                error: can_usb_protocol::BusError::BitDominant,
+            },
+            BUS_TEST_ECHO_ID
+        ));
+    }
 
     fn timed(time_us: u64, event: BusEvent) -> TimedEvent {
         TimedEvent { time_us, event }

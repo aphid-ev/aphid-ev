@@ -2,6 +2,11 @@
 //! bootloader: small enough to transfer quickly, and obviously alive once
 //! running, since it echoes back every frame it receives.
 //!
+//! A frame on `boot_protocol::BUS_TEST_ID` is answered on
+//! `boot_protocol::BUS_TEST_ECHO_ID` with the same data, so a node streaming
+//! test frames never ties with the echo in arbitration. Every other frame
+//! goes back unchanged.
+//!
 //! It links at the application offset rather than the start of flash — see
 //! memory.x — so it only runs when started by the bootloader, and only once
 //! the image tool has sealed its header.
@@ -11,10 +16,11 @@
 
 use embassy_executor::Spawner;
 use embassy_stm32::can::{
-    CanConfigurator, IT0InterruptHandler, IT1InterruptHandler, OperatingMode, filter,
+    CanConfigurator, Frame, IT0InterruptHandler, IT1InterruptHandler, OperatingMode, filter,
 };
 use embassy_stm32::time::Hertz;
 use embassy_stm32::{Config, bind_interrupts, peripherals::*};
+use embedded_can::{Id, StandardId};
 use panic_halt as _;
 
 // The header the bootloader checks before it starts this image, at the
@@ -66,7 +72,19 @@ async fn main(_spawner: Spawner) {
             // room. Dropped on purpose here: this image is deliberately
             // minimal and has no logging, and an echo lost under load says
             // nothing about whether the flashing worked.
-            let _dropped = can.write(&envelope.frame).await;
+            let _dropped = can.write(&echo(envelope.frame)).await;
         }
     }
+}
+
+/// The answer to `frame`: the same data, on the identifier
+/// `boot_protocol::echo_id` gives for a standard one.
+fn echo(mut frame: Frame) -> Frame {
+    if let Id::Standard(id) = *frame.id()
+        && let Some(echo) = StandardId::new(boot_protocol::echo_id(id.as_raw()))
+    {
+        *frame.id_mut() = Id::Standard(echo);
+    }
+
+    frame
 }
