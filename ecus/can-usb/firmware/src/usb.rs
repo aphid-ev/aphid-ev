@@ -1,8 +1,8 @@
 use crate::{ClearSignal, CommandSignal, EventReceiver, FIRMWARE_VERSION, FrameSender};
 use can_usb_protocol::{
     BULK_IN_EP, BULK_IN_PACKET_LIMIT, BULK_OUT_EP, Batcher, BusCommand, Controller, DeviceInfo,
-    DropLog, DropTracker, Frame, INTERFACE, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID,
-    PROTOCOL_VERSION, VENDOR_ID, unpack,
+    DropLog, DropTracker, Frame, INTERFACE, INTERFACE_CLASS, MAX_PACKET_SIZE, MSOS_VENDOR_CODE,
+    PRODUCT_ID, PROTOCOL_VERSION, VENDOR_ID, unpack,
 };
 use defmt::{debug, error, info, unwrap, warn};
 use embassy_executor::Spawner;
@@ -89,10 +89,10 @@ impl UsbDevice {
         // Linux never ask for these.
         builder.msos_descriptor(windows_version::WIN8_1, MSOS_VENDOR_CODE);
 
-        // A vendor-specific function (class 0xFF) carrying the two bulk
+        // A vendor-specific function (INTERFACE_CLASS) carrying the two bulk
         // endpoints. The addresses are pinned because the host application
         // opens them by address.
-        let mut function = builder.function(0xFF, 0, 0);
+        let mut function = builder.function(INTERFACE_CLASS, 0, 0);
         function.msos_feature(msos::CompatibleIdFeatureDescriptor::new("WINUSB", ""));
         function.msos_feature(msos::RegistryPropertyFeatureDescriptor::new(
             "DeviceInterfaceGUIDs",
@@ -103,7 +103,7 @@ impl UsbDevice {
         // interfaces in the order they are created, so this one is 0 only
         // while it is the first.
         defmt::assert_eq!(interface.interface_number().0, INTERFACE);
-        let mut alt = interface.alt_setting(0xFF, 0, 0, None);
+        let mut alt = interface.alt_setting(INTERFACE_CLASS, 0, 0, None);
         let read_ep = alt.endpoint_bulk_out(
             Some(EndpointAddress::from(BULK_OUT_EP)),
             MAX_PACKET_SIZE as u16,
