@@ -1,14 +1,15 @@
 ---
 id: ayys.gu
 title: Pack several bus events into each USB packet on the CAN/USB interface
-status: open
+status: done
 priority: P1
 created: "2026-11-24T17:15:07.344342219Z"
-updated: "2026-11-24T17:15:07.344342219Z"
+updated: "2026-11-24T18:09:04.302453611Z"
 tags:
   - can-usb
 depends_on:
   - ayys.89
+attempts: 1
 ---
 
 ## Summary
