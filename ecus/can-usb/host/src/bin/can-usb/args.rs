@@ -33,8 +33,13 @@ pub enum Command {
         period: u64,
     },
 
-    /// Test throughput by sending ping messages as fast as possible
-    Throughput,
+    /// Send frames as fast as the interface takes them, count what comes
+    /// back, and print the rate and bus load
+    Throughput {
+        /// Number of frames to send
+        #[arg(short = 'n', long, default_value = "10000")]
+        count: u32,
+    },
 }
 
 fn parse_bitrate(kbit: &str) -> Result<Bitrate, String> {
@@ -92,5 +97,14 @@ mod tests {
 
         assert_eq!(args.bitrate, Bitrate::Kbit250);
         assert_eq!(args.mode, Mode::ListenOnly);
+    }
+
+    #[test]
+    fn throughput_takes_a_frame_count() {
+        let args = Args::try_parse_from(["can-usb", "throughput"]).unwrap();
+        assert!(matches!(args.command, Command::Throughput { count: 10000 }));
+
+        let args = Args::try_parse_from(["can-usb", "throughput", "-n", "50"]).unwrap();
+        assert!(matches!(args.command, Command::Throughput { count: 50 }));
     }
 }
