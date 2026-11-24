@@ -1,5 +1,8 @@
 use crate::{RxReceiver, TxSender};
-use can_usb_protocol::Frame;
+use can_usb_protocol::{
+    BULK_IN_EP, BULK_OUT_EP, Frame, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID, Packer,
+    VENDOR_ID, unpack,
+};
 use defmt::{error, info, unwrap, warn};
 use embassy_executor::Spawner;
 use embassy_stm32::usb::{Endpoint, In, Out};
@@ -12,16 +15,12 @@ use static_cell::StaticCell;
 static CONFIG_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
 static BOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
 static MSOS_DESCRIPTOR: StaticCell<[u8; 256]> = StaticCell::new();
-static CONTROL_BUF: StaticCell<[u8; 64]> = StaticCell::new();
+static CONTROL_BUF: StaticCell<[u8; MAX_PACKET_SIZE]> = StaticCell::new();
 
 /// Identifies this interface to Windows. Generated once and fixed from then
 /// on: Windows caches the driver binding against this value, so changing it
 /// orphans the binding on every machine that has already seen the device.
 const DEVICE_INTERFACE_GUID: &str = "{19F2234B-041A-4811-B321-E288246821A7}";
-
-/// bRequest that Windows uses to ask for the descriptor set. Any value will
-/// do while nothing else on this device answers vendor requests.
-const MSOS_VENDOR_CODE: u8 = 0x01;
 
 pub struct UsbDevice {
     usb_driver: Driver<'static, USB>,
@@ -43,17 +42,17 @@ impl UsbDevice {
     }
 
     pub fn start(self, spawner: Spawner) {
-        let mut config = embassy_usb::Config::new(0xc0de, 0xf055);
+        let mut config = embassy_usb::Config::new(VENDOR_ID, PRODUCT_ID);
         config.manufacturer = Some("Aphid-ev");
         config.product = Some("can-interface");
         config.serial_number = Some("1");
         config.max_power = 100;
-        config.max_packet_size_0 = 64;
+        config.max_packet_size_0 = MAX_PACKET_SIZE as u8;
 
         let config_descriptor = CONFIG_DESCRIPTOR.init([0; 256]);
         let bos_descriptor = BOS_DESCRIPTOR.init([0; 256]);
         let msos_descriptor = MSOS_DESCRIPTOR.init([0; 256]);
-        let control_buf = CONTROL_BUF.init([0; 64]);
+        let control_buf = CONTROL_BUF.init([0; MAX_PACKET_SIZE]);
 
         let mut builder = Builder::new(
             self.usb_driver,
@@ -73,7 +72,7 @@ impl UsbDevice {
 
         // A vendor-specific function (class 0xFF) carrying the two bulk
         // endpoints. The addresses are pinned because the host application
-        // opens bulk OUT 0x01 and bulk IN 0x82 by address.
+        // opens them by address.
         let mut function = builder.function(0xFF, 0, 0);
         function.msos_feature(msos::CompatibleIdFeatureDescriptor::new("WINUSB", ""));
         function.msos_feature(msos::RegistryPropertyFeatureDescriptor::new(
@@ -82,8 +81,14 @@ impl UsbDevice {
         ));
         let mut interface = function.interface();
         let mut alt = interface.alt_setting(0xFF, 0, 0, None);
-        let read_ep = alt.endpoint_bulk_out(Some(EndpointAddress::from(0x01)), 64);
-        let write_ep = alt.endpoint_bulk_in(Some(EndpointAddress::from(0x82)), 64);
+        let read_ep = alt.endpoint_bulk_out(
+            Some(EndpointAddress::from(BULK_OUT_EP)),
+            MAX_PACKET_SIZE as u16,
+        );
+        let write_ep = alt.endpoint_bulk_in(
+            Some(EndpointAddress::from(BULK_IN_EP)),
+            MAX_PACKET_SIZE as u16,
+        );
         drop(function);
 
         let usb = builder.build();
@@ -98,28 +103,20 @@ impl UsbDevice {
 
 #[embassy_executor::task]
 async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, tx_sender: TxSender) {
-    let mut buf = [0u8; 64];
+    let mut buf = [0u8; MAX_PACKET_SIZE];
 
     loop {
         read_ep.wait_enabled().await;
         info!("USB connected");
 
         while let Ok(len) = read_ep.read(&mut buf).await {
-            // Frames are variable length, so a transfer can carry several of
-            // them back to back. Keep decoding until the packet is used up:
-            // from_bytes would return only the first and discard the rest.
-            let mut remaining = &buf[..len];
-
-            while !remaining.is_empty() {
-                match postcard::take_from_bytes::<Frame>(remaining) {
-                    Ok((frame, rest)) => {
-                        remaining = rest;
-                        tx_sender.send(frame).await;
-                    }
-                    Err(error) => {
-                        error!("Failed to deserialize postcard data: {}", error);
-                        break;
-                    }
+            // A packet carries a whole number of frames back to back. A tail
+            // that does not decode ends the packet: the frames before it are
+            // sent, the rest is dropped.
+            for frame in unpack::<Frame>(&buf[..len]) {
+                match frame {
+                    Ok(frame) => tx_sender.send(frame).await,
+                    Err(error) => error!("Dropped the rest of a USB packet: {}", error),
                 }
             }
         }
@@ -130,18 +127,22 @@ async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, tx_sender: TxSender
 
 #[embassy_executor::task]
 async fn write_task(mut write_ep: Endpoint<'static, USB, In>, rx_receiver: RxReceiver) {
-    let mut buf = [0u8; 64];
+    let mut packer = Packer::new();
 
     loop {
         let event = rx_receiver.receive().await;
 
-        match postcard::to_slice(&event, &mut buf) {
-            Ok(data) => {
-                if let Err(error) = write_ep.write(data).await {
+        // One event per packet for now. Every event fits an empty packet,
+        // which the protocol crate's tests guarantee.
+        packer.clear();
+
+        match packer.push(&event) {
+            Ok(()) => {
+                if let Err(error) = write_ep.write(packer.as_bytes()).await {
                     warn!("Dropped {}, USB write failed: {}", event, error);
                 }
             }
-            Err(error) => error!("Failed to serialize postcard data: {}", error),
+            Err(error) => error!("Failed to encode {}: {}", event, error),
         }
     }
 }

@@ -16,6 +16,9 @@ pub enum Error {
     #[error("Failed transver: {0}")]
     Transfer(#[from] nusb::transfer::TransferError),
 
-    #[error("Failed serialization/deserialization with postcard: {0}")]
-    Postcard(#[from] postcard::Error),
+    #[error("Could not encode a frame: {0}")]
+    Pack(#[from] can_usb_protocol::PackError),
+
+    #[error("Could not decode a packet from the device: {0}")]
+    Unpack(#[from] can_usb_protocol::UnpackError),
 }

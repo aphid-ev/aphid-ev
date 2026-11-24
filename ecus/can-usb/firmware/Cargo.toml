@@ -20,7 +20,7 @@ embassy-executor = { version = "0.10.0", features = [
 embassy-time = { version = "0.5.1", features = [
     "defmt",
     "defmt-timestamp-uptime",
-    "tick-hz-32_768",
+    "tick-hz-1_000_000",
 ] }
 embassy-usb = { version = "0.6.0", features = ["defmt"] }
 embassy-futures = { version = "0.1.2" }
@@ -34,7 +34,6 @@ embedded-can = { version = "0.4.1" }
 panic-probe = { version = "1.0.0", features = ["print-defmt"] }
 can-usb-protocol = { path = "../../../crates/can-usb-protocol", features = ["defmt"] }
 static_cell = "2.1.1"
-postcard = { version = "1.2.0", features = ["use-defmt"] }
 
 # A standalone workspace, not part of the host workspace at the root.
 [workspace]

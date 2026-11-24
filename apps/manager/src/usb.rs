@@ -35,7 +35,7 @@ impl Bus for UsbBus {
     /// a timeout in the caller.
     async fn receive(&mut self) -> Result<Frame, BusError> {
         loop {
-            if let BusEvent::Frame(frame) = self.device.receive().await.map_err(error)?
+            if let BusEvent::Frame { frame, .. } = self.device.receive().await.map_err(error)?
                 && let FrameId::Standard(id) = frame.id()
                 && let Some(frame) = Frame::new(id, frame.data())
             {
