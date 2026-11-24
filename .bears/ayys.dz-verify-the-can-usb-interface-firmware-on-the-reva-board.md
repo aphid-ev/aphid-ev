@@ -37,7 +37,7 @@ Global options come before the command and take kbit/s: `can-usb -b 500 -m loopb
 - Against `can-echo`: every ping is answered on `0x7ce`. Throughput shows no bus errors, no bus-off, zero out of sequence and zero overruns. The reported load is about 50 %, because it counts only the echoes; together with the dongle's own frames the bus is near 100 %. Record frames/s.
 - Two dongles: A's `listen` shows B's sequence numbers in order with no gaps, times rising, and no overrun.
 - Each bit rate: same as above at that rate.
-- Listen-only: A shows B's frames, does not ACK them, and B reports acknowledge errors and goes error-passive.
+- Listen-only: nobody ACKs. B reports acknowledge errors and goes error-passive (not bus-off). A shows form errors or nothing, never an ACK; its frames, if any, are not acknowledged by A.
 - Short: BusOff is reported once or twice per ~100 ms while shorted, then ErrorActive about 100 ms after release. ERR LED steady during bus-off.
 - RX/TX LEDs flash with traffic and look lit at full load. ERR pulses on bus errors. The power LED is on whenever USB is plugged in.
 - Past 72 minutes, the time `listen` prints keeps rising past 4294967295 µs.
