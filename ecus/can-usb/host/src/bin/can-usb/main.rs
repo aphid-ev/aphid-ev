@@ -1,4 +1,5 @@
 use args::{Args, Command};
+use boot_protocol::BUS_TEST_ID;
 use can_usb_host::*;
 use can_usb_protocol::Frame;
 use clap::Parser;
@@ -33,7 +34,7 @@ async fn listen(mut usb_can: UsbCanDevice) -> Result<()> {
 }
 
 async fn ping(mut usb_can: UsbCanDevice, period: Duration) -> Result<()> {
-    let ping = Frame::new(0x7ffu16, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+    let ping = Frame::new(BUS_TEST_ID, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
     loop {
         _ = usb_can.send(&ping).await;
 
@@ -46,7 +47,7 @@ async fn ping(mut usb_can: UsbCanDevice, period: Duration) -> Result<()> {
 }
 
 async fn throughput(mut usb_can: UsbCanDevice) -> Result<()> {
-    let ping = Frame::new(0x7ffu16, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+    let ping = Frame::new(BUS_TEST_ID, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
     let start = Instant::now();
     for _ in 0..1000 {
         _ = usb_can.send(&ping).await;
