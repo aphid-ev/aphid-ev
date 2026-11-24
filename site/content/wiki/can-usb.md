@@ -113,7 +113,10 @@ would overflow while it waited. The receive task counts each frame that
 does not fit instead. As soon as there is room again, the interface sends
 one overrun event with the count, in the place where the frames went
 missing, and starts counting from zero. If the computer stops reading for a
-while, the first event it gets after it resumes is that overrun. A bus
+while, it first gets the events queued before the loss began. Those are
+the events in the host library's queue, up to `EVENT_QUEUE_LIMIT`, and in
+its finished reads, then the 128 in the interface's receive queue. The
+overrun comes after them, in the place of the frames that were lost. A bus
 error that finds the queue full is logged over defmt and not reported to
 the computer.
 
