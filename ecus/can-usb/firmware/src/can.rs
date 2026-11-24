@@ -429,9 +429,11 @@ async fn discard(frame_receiver: FrameReceiver, discarded: &mut u32) -> Infallib
 /// A received frame's `envelope.ts` is in effect the moment this firmware
 /// read it out of the FDCAN RX FIFO, so it lags the frame's arrival by the
 /// time the frame waited there. embassy-stm32 0.6 tries to correct it with
-/// the FDCAN timestamp counter, but that counter counts bit times while the
-/// driver converts it as time quanta, so the correction is about a thousand
-/// times too small to matter.
+/// the FDCAN timestamp counter, which counts bit times. The driver computes
+/// the tick length from NBTP and TSCC before it writes them, so from their
+/// reset values: always 20 ns, against a real tick of one bit time (1 to
+/// 8 us). The correction is 50 to 400 times too small, depending on the bit
+/// rate, and rounded up to whole microseconds.
 fn timestamp_us(instant: Instant) -> u32 {
     instant.as_micros() as u32
 }

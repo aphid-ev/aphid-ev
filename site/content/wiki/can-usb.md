@@ -332,12 +332,14 @@ The firmware runs embassy's clock at 1 MHz, so timestamps resolve one
 microsecond. The firmware stamps a received frame when it reads the frame
 out of the FDCAN receive FIFO. The stamp lags the frame's arrival on the
 bus by however long the frame waited in that FIFO. The embassy driver
-tries to correct for the wait with the FDCAN timestamp counter, but it
-converts the counter's bit times as time quanta, so the correction is
-about a thousand times too small. A bus error or a bus state is stamped
-when the firmware reads it, and an overrun carries the stamp of the first
-frame it counts. See [bus state and bus-off](#bus-state) for when the
-interface sends a state event.
+tries to correct for the wait with the FDCAN timestamp counter, which
+counts bit times. It reads the bit timing from the reset registers before
+it configures them, though, so it always takes a counter tick as 20 ns.
+A tick is one bit time, 1 µs at 1 Mbit/s up to 8 µs at 125 kbit/s, so the
+correction is 50 to 400 times too small, depending on the bit rate. A bus
+error or a bus state is stamped when the firmware reads it, and an
+overrun carries the stamp of the first frame it counts. See [bus state and
+bus-off](#bus-state) for when the interface sends a state event.
 
 ## Control requests {#control-requests}
 
