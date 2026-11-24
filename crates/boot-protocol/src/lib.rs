@@ -41,6 +41,27 @@ pub const BLOCK_DATA_BASE_ID: u16 = 0x7d0;
 /// `0x7ef`).
 pub const BUS_TEST_ID: u16 = 0x7cf;
 
+/// The answer to a [`BUS_TEST_ID`] frame: `can-echo` sends the same data
+/// back on this identifier.
+///
+/// A test node streams on [`BUS_TEST_ID`] as fast as the bus takes frames.
+/// If the echo went out on the same identifier, the two nodes would start
+/// frames together, tie in arbitration and then differ in the data, which
+/// is a bit error for the one that loses. A different identifier settles
+/// arbitration instead.
+pub const BUS_TEST_ECHO_ID: u16 = 0x7ce;
+
+/// The standard identifier `can-echo` answers a frame on `id` with:
+/// [`BUS_TEST_ECHO_ID`] for [`BUS_TEST_ID`], `id` itself for everything
+/// else.
+pub const fn echo_id(id: u16) -> u16 {
+    if id == BUS_TEST_ID {
+        BUS_TEST_ECHO_ID
+    } else {
+        id
+    }
+}
+
 /// How long a node waits for **Catch bootloader** after its wakeup frame
 /// before it starts the application.
 pub const WAKEUP_WINDOW_MS: u32 = 500;
@@ -178,6 +199,25 @@ mod tests {
         let bootloader = BLOCK_DATA_BASE_ID..=WAKEUP_ID;
 
         assert!(!bootloader.contains(&BUS_TEST_ID));
+    }
+
+    /// The echo is a bus test frame too, and must not tie with the frame it
+    /// answers.
+    #[test]
+    fn bus_test_echo_identifier_is_outside_the_bootloader_range_and_its_own() {
+        let bootloader = BLOCK_DATA_BASE_ID..=WAKEUP_ID;
+
+        assert!(!bootloader.contains(&BUS_TEST_ECHO_ID));
+        assert_ne!(BUS_TEST_ECHO_ID, BUS_TEST_ID);
+    }
+
+    #[test]
+    fn only_the_bus_test_identifier_is_echoed_on_another() {
+        assert_eq!(echo_id(BUS_TEST_ID), BUS_TEST_ECHO_ID);
+        assert_eq!(echo_id(BUS_TEST_ECHO_ID), BUS_TEST_ECHO_ID);
+        assert_eq!(echo_id(0x123), 0x123);
+        assert_eq!(echo_id(0), 0);
+        assert_eq!(echo_id(0x7ff), 0x7ff);
     }
 
     /// The programming device never runs a bootloader, which is what makes

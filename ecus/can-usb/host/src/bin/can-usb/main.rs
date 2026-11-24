@@ -1,11 +1,11 @@
 use args::{Args, Command};
 use boot_protocol::BUS_TEST_ID;
 use can_usb_host::*;
-use can_usb_protocol::{Bitrate, Config, Frame};
+use can_usb_protocol::{Bitrate, Config, Frame, Mode};
 use clap::Parser;
 use std::time::Duration;
 use throughput::Tally;
-use tokio::time::{Instant, timeout};
+use tokio::time::{Instant, sleep_until, timeout, timeout_at};
 
 mod args;
 mod throughput;
@@ -35,8 +35,8 @@ async fn app(args: Args) -> Result<()> {
     match args.command {
         Command::Info => info(&usb_can).await,
         Command::Listen => listen(usb_can).await,
-        Command::Ping { period } => ping(usb_can, Duration::from_secs(period)).await,
-        Command::Throughput { count } => throughput(usb_can, args.bitrate, count).await,
+        Command::Ping { period } => ping(usb_can, args.mode, Duration::from_secs(period)).await,
+        Command::Throughput { count } => throughput(usb_can, args.bitrate, args.mode, count).await,
     }
 }
 
@@ -62,23 +62,45 @@ async fn listen(mut usb_can: UsbCanDevice) -> Result<()> {
     }
 }
 
-async fn ping(mut usb_can: UsbCanDevice, period: Duration) -> Result<()> {
+/// Sends a test frame every `period` and prints the events up to its echo.
+async fn ping(mut usb_can: UsbCanDevice, mode: Mode, period: Duration) -> Result<()> {
     let ping = Frame::new(BUS_TEST_ID, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+    let echo_id = throughput::echo_id(mode);
+
     loop {
+        let next = Instant::now() + period;
         usb_can.send(&ping).await?;
 
-        let pong = usb_can.receive().await?;
+        loop {
+            match timeout_at(next, usb_can.receive_timed()).await {
+                Ok(event) => {
+                    let event = event?;
+                    println!("{event}");
 
-        println!("{pong}");
+                    if throughput::is_echo(&event.event, echo_id) {
+                        break;
+                    }
+                }
+                Err(_) => {
+                    println!("No echo on {echo_id:#05x} within {} s", period.as_secs());
+                    break;
+                }
+            }
+        }
 
-        tokio::time::sleep(period).await;
+        sleep_until(next).await;
     }
 }
 
 /// Sends `count` frames as fast as the interface takes them, collecting
 /// events in between, then waits for the rest.
-async fn throughput(mut usb_can: UsbCanDevice, bitrate: Bitrate, count: u32) -> Result<()> {
-    let mut tally = Tally::new(BUS_TEST_ID);
+async fn throughput(
+    mut usb_can: UsbCanDevice,
+    bitrate: Bitrate,
+    mode: Mode,
+    count: u32,
+) -> Result<()> {
+    let mut tally = Tally::new(throughput::echo_id(mode));
     let start = Instant::now();
     let mut sent = 0;
 
@@ -133,6 +155,12 @@ async fn throughput(mut usb_can: UsbCanDevice, bitrate: Bitrate, count: u32) -> 
              bus load {load:.1} % without stuff bits"
         ),
         _ => println!("Rate       too few frames received to measure"),
+    }
+    if mode != Mode::InternalLoopback {
+        println!(
+            "           The interface receives only the echoes; \
+             the frames it sent took as much of the bus again"
+        );
     }
 
     Ok(())

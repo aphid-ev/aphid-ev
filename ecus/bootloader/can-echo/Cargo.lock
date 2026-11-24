@@ -93,6 +93,7 @@ dependencies = [
  "cortex-m-rt",
  "embassy-executor",
  "embassy-stm32",
+ "embedded-can",
  "panic-halt",
 ]
 
