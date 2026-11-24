@@ -11,6 +11,9 @@
 //!   [`DropTracker`] accounts for events a failed write drops (see [`batch`]).
 //! - [`OverrunCounter`] turns received frames the interface could not queue
 //!   into one [`BusEvent::Overrun`] (see [`overrun`]).
+//! - [`BusMonitor`] turns the controller's status into
+//!   [`BusEvent::BusState`] events and decides when to recover from bus-off
+//!   (see [`bus_monitor`]).
 //!
 //! The firmware and the host are flashed and installed separately, so the
 //! `wire_encoding_is_stable` tests pin the bytes. Change them only to break
@@ -22,6 +25,7 @@
 pub mod batch;
 mod bus_error;
 mod bus_event;
+pub mod bus_monitor;
 mod control;
 pub mod controller;
 mod frame;
@@ -32,6 +36,7 @@ pub mod usb;
 pub use batch::{Batcher, DropLog, DropTracker};
 pub use bus_error::*;
 pub use bus_event::*;
+pub use bus_monitor::{BusMonitor, ControllerStatus, Update};
 pub use control::*;
 pub use controller::{BusCommand, Controller, Rejection};
 pub use frame::*;
