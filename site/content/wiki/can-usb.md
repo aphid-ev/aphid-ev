@@ -116,6 +116,8 @@ the computer.
 
 Until the computer's USB stack configures the device, the firmware
 discards events at the USB end, so they are neither queued nor counted.
+It logs this once over defmt when it starts discarding, and once with
+the number of events discarded when the computer takes packets again.
 Linux, Windows and macOS configure the device when it is plugged in,
 whether or not a program opens it. From then on the queue fills while no
 program reads. A program that opens the interface later first gets old
@@ -168,8 +170,25 @@ in bytes that are not a whole value, the receiver keeps the values before
 them and drops the rest of that packet. An empty packet carries nothing.
 
 Bulk OUT carries frames to send on the bus. Bulk IN carries bus events.
-The host library sends one frame per packet, and the interface sends one
-event per packet.
+The host library sends one frame per packet.
+
+The interface packs as many events into each IN packet as it has queued.
+It waits for one event, adds every other event already in the receive
+queue until the next one does not fit, and sends the packet. The event
+that did not fit opens the next packet. There is no timer, so on a quiet
+bus each event goes out on its own as soon as it happens, and in a burst
+the packets fill up. While the computer has not yet collected a packet,
+the queue keeps filling, and the next packet carries the events queued in
+the meantime.
+
+An IN packet is at most 63 bytes, one short of the largest packet. A USB
+bulk transfer ends with a packet shorter than the largest, so every IN
+packet ends its transfer and the interface never needs to send a
+zero-length packet. A host read returns exactly one packet as soon as the
+interface sends it, whatever the size of the buffer. A 64-byte buffer is
+enough. To keep the endpoint busy, a host keeps several such reads
+outstanding instead of one large one. The crate defines the limit as
+`BULK_IN_PACKET_LIMIT`.
 
 Integers are varints unless the table says otherwise. Enums are encoded as
 a varint tag, their position in the list, followed by their fields. A tag
