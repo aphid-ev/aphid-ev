@@ -29,9 +29,39 @@ start of flash and is flashed with a debug probe on the STDC14 connector.
 
 # Hardware
 
-The firmware runs on an STM32G431CB with a 16 MHz crystal. USB is on PA11
-and PA12, and FDCAN1 is on PB8 and PB9. A TJA1042 transceiver connects
-FDCAN1 to the bus. The KiCad project is in `ecus/can-usb/hardware`.
+The board is an STM32G431CB with a 16 MHz crystal and a TJA1042
+transceiver between FDCAN1 and the bus. The KiCad project is in
+`ecus/can-usb/hardware`. The firmware supports revision A of the board,
+tagged `can-usb-hw-revA`, and no other. The firmware names its pins in
+`firmware/src/board.rs` and nowhere else:
+
+| Signal | Pin | Function |
+| --- | --- | --- |
+| USB D− and D+ | PA11, PA12 | |
+| FDCAN1 RX and TX | PB8, PB9 | To the transceiver |
+| `CAN_STB` | PC13 | Transceiver standby, high is standby |
+| `LED_RX` | PA7 | RX LED, high is on |
+| `LED_TX` | PA6 | TX LED, high is on |
+| `LED_ERR` | PA5 | ERR LED, high is on |
+| HSE | PF0, PF1 | 16 MHz crystal |
+
+A pull-up holds the transceiver's STB input high, so after reset the
+transceiver is in standby. In standby it does not drive the bus and does not
+pass received bits on. The firmware drives STB low once FDCAN1 is set up,
+just before FDCAN1 starts, and it drives STB high again whenever the bus is
+stopped.
+
+The interface has four LEDs:
+
+| LED | Colour | Lit while |
+| --- | --- | --- |
+| Power | | The 3.3 V rail is up. Not under firmware control |
+| RX | Green | For 20 ms after each received frame |
+| TX | Green | For 20 ms after each frame handed to the transmit mailbox |
+| ERR | Red | For 500 ms after each bus error |
+
+Each new frame or error restarts the time of its LED, so RX and TX stay lit
+on a busy bus.
 
 The interface has no bus termination. The ECUs at the ends of the bus
 terminate it, so the interface can be plugged in anywhere along it.
