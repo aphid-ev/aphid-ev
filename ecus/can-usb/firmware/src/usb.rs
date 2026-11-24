@@ -1,9 +1,9 @@
 use crate::{EventReceiver, FrameSender};
 use can_usb_protocol::{
-    BULK_IN_EP, BULK_OUT_EP, Frame, INTERFACE, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID,
-    Packer, VENDOR_ID, unpack,
+    BULK_IN_EP, BULK_IN_PACKET_LIMIT, BULK_OUT_EP, BusEvent, Frame, INTERFACE, MAX_PACKET_SIZE,
+    MSOS_VENDOR_CODE, PRODUCT_ID, Packer, VENDOR_ID, unpack,
 };
-use defmt::{error, info, trace, unwrap};
+use defmt::{error, info, unwrap};
 use embassy_executor::Spawner;
 use embassy_stm32::usb::{Endpoint, In, Out};
 use embassy_stm32::{peripherals::USB, usb::Driver};
@@ -138,27 +138,60 @@ async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, frame_sender: Frame
 
 #[embassy_executor::task]
 async fn write_task(mut write_ep: Endpoint<'static, USB, In>, event_receiver: EventReceiver) {
-    let mut packer = Packer::new();
+    // Every packet stays one byte short of the endpoint's maximum, so each
+    // ends its USB transfer and no zero-length packet is needed. See
+    // BULK_IN_PACKET_LIMIT.
+    let mut packer = Packer::with_limit(BULK_IN_PACKET_LIMIT);
+    // The event that did not fit the last packet. It opens the next one, so
+    // events keep their order.
+    let mut carry = None;
+    // Events dropped since the last write that went through, or None while
+    // writes go through.
+    let mut dropped: Option<usize> = None;
 
     loop {
-        let event = event_receiver.receive().await;
+        // Wait for one event, then take whatever else is queued without
+        // waiting. No timer: on a quiet bus each event goes out at once.
+        let first = match carry.take() {
+            Some(event) => event,
+            None => event_receiver.receive().await,
+        };
 
-        // One event per packet for now. Every event fits an empty packet,
-        // which the protocol crate's tests guarantee.
         packer.clear();
+        let queued = core::iter::from_fn(|| event_receiver.try_receive().ok());
+        carry = packer.fill(core::iter::once(first).chain(queued), |event, error| {
+            error!("Failed to encode {}: {}", event, error)
+        });
 
-        match packer.push(&event) {
-            // While no host has the device configured, the write fails at
-            // once and the event is discarded here. That keeps the event
-            // queue draining, so a host that connects late gets current
-            // events rather than an overrun for frames from before it was
-            // there. Logged at trace because it happens once per event.
+        if packer.is_empty() {
+            continue;
+        }
+
+        // While the endpoint waits for the host to collect this packet, the
+        // event queue keeps filling and the next packet takes what it holds.
+        //
+        // While no host has the device configured, the write fails at once
+        // and the packet's events are discarded. That keeps the event queue
+        // draining, so a host that connects late gets current events rather
+        // than an overrun for frames from before it was there. Logged once
+        // per disconnect, with the count when writes go through again.
+        match write_ep.write(packer.as_bytes()).await {
             Ok(()) => {
-                if let Err(error) = write_ep.write(packer.as_bytes()).await {
-                    trace!("Dropped {}, USB write failed: {}", event, error);
+                if let Some(count) = dropped.take() {
+                    info!("USB writes resumed, {} events dropped", count);
                 }
             }
-            Err(error) => error!("Failed to encode {}: {}", event, error),
+            Err(error) => {
+                let events = unpack::<BusEvent>(packer.as_bytes()).count();
+
+                match dropped.as_mut() {
+                    Some(count) => *count += events,
+                    None => {
+                        info!("USB write failed, dropping events: {}", error);
+                        dropped = Some(events);
+                    }
+                }
+            }
         }
     }
 }
