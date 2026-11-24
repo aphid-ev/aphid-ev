@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// Every event carries `timestamp_us`, the interface's clock in microseconds
 /// when it happened. It is a free-running counter that wraps after
-/// 2³² µs (about 71.6 minutes); the host unwraps it. It is encoded as four
+/// 2³² µs (about 71.6 minutes); the host unwraps it with a
+/// [`TimestampUnwrapper`](crate::TimestampUnwrapper). It is encoded as four
 /// little-endian bytes rather than a varint, so every event of a kind has
 /// the same size.
 ///
@@ -58,19 +59,36 @@ impl BusEvent {
             | Self::Overrun { timestamp_us, .. } => *timestamp_us,
         }
     }
+
+    /// Displays the event without its timestamp, for a host that shows the
+    /// unwrapped time instead.
+    pub fn without_timestamp(&self) -> impl fmt::Display + '_ {
+        WithoutTimestamp(self)
+    }
 }
 
 impl fmt::Display for BusEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:>10} us ", self.timestamp_us())?;
+        write!(
+            f,
+            "{:>10} us {}",
+            self.timestamp_us(),
+            self.without_timestamp()
+        )
+    }
+}
 
-        match self {
-            Self::Frame { frame, .. } => write!(f, "Frame({frame})"),
-            Self::BusError { error, .. } => write!(f, "Error({error})"),
-            Self::BusState {
+struct WithoutTimestamp<'a>(&'a BusEvent);
+
+impl fmt::Display for WithoutTimestamp<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            BusEvent::Frame { frame, .. } => write!(f, "Frame({frame})"),
+            BusEvent::BusError { error, .. } => write!(f, "Error({error})"),
+            BusEvent::BusState {
                 state, tec, rec, ..
             } => write!(f, "State({state:?}, TEC={tec}, REC={rec})"),
-            Self::Overrun { lost, .. } => write!(f, "Overrun({lost} lost)"),
+            BusEvent::Overrun { lost, .. } => write!(f, "Overrun({lost} lost)"),
         }
     }
 }
@@ -255,5 +273,13 @@ mod tests {
         assert_eq!(error, "         1 us Error(Crc)");
         assert_eq!(state, "4294967295 us State(ErrorPassive, TEC=128, REC=7)");
         assert_eq!(overrun, "         0 us Overrun(300 lost)");
+    }
+
+    #[test]
+    fn display_without_timestamp_shows_only_the_event() {
+        let [frame, .., overrun] = all_kinds().map(|e| e.without_timestamp().to_string());
+
+        assert_eq!(frame, "Frame(StdId=0x123 [1, 2, 3])");
+        assert_eq!(overrun, "Overrun(300 lost)");
     }
 }
