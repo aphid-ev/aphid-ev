@@ -83,8 +83,11 @@ impl fmt::Display for TimedEvent {
 /// - The interface's clock restarts at 0 when it powers up or resets. That
 ///   ends the USB connection, so this value only sees it as
 ///   [`Error::Disconnected`]; the next one starts over as above.
-/// - Two events more than 2³² µs apart, on a bus quiet for that long, come
-///   out whole multiples of 2³² µs too close together. See
+/// - A timestamp up to 2³¹ µs smaller than the latest one is an event
+///   stamped a little before the one queued ahead of it, not a wrap, and
+///   gets the earlier time. So after a gap of 2³¹ µs (35.8 minutes) or more,
+///   on a bus quiet for that long, the events come out one or more whole
+///   periods of 2³² µs too early. See
 ///   [`can_usb_protocol::timestamp`].
 pub struct UsbCanDevice<T: Transport = NusbTransport> {
     transport: T,
