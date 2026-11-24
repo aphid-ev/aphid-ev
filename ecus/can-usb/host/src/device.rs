@@ -1,15 +1,21 @@
 use crate::{Error, Result};
 use can_usb_protocol::{
-    BULK_IN_EP, BULK_OUT_EP, BusEvent, Frame, INTERFACE, MAX_PACKET_SIZE, PRODUCT_ID, Packer,
-    VENDOR_ID, unpack,
+    BULK_IN_EP, BULK_OUT_EP, BusEvent, Config, ControlRequest, DeviceInfo, Frame, INTERFACE,
+    MAX_PACKET_SIZE, PRODUCT_ID, PROTOCOL_VERSION, Packer, VENDOR_ID, unpack,
 };
 use nusb::{
-    DeviceInfo, Endpoint, MaybeFuture,
-    transfer::{Bulk, In, Out},
+    Endpoint, Interface, MaybeFuture,
+    transfer::{Bulk, ControlIn, ControlOut, ControlType, In, Out, Recipient},
 };
 use std::collections::VecDeque;
+use std::time::Duration;
+
+/// How long a control request may take. The interface answers each one
+/// without waiting for the bus.
+const CONTROL_TIMEOUT: Duration = Duration::from_secs(1);
 
 pub struct UsbCanDevice {
+    interface: Interface,
     ep_out: Endpoint<Bulk, Out>,
     ep_in: Endpoint<Bulk, In>,
     /// Events already read from the device but not yet returned by
@@ -21,14 +27,25 @@ pub struct UsbCanDevice {
 }
 
 impl UsbCanDevice {
-    pub fn find() -> Option<DeviceInfo> {
+    pub fn find() -> Option<nusb::DeviceInfo> {
         nusb::list_devices()
             .wait()
             .ok()?
             .find(|d| d.vendor_id() == VENDOR_ID && d.product_id() == PRODUCT_ID)
     }
 
-    pub fn open(device_info: DeviceInfo) -> Result<Self> {
+    /// Opens the interface, checks that it speaks this protocol version and
+    /// starts the bus with the config it has, which is 500 kbit/s in normal
+    /// mode unless a program changed it since the interface was plugged in.
+    ///
+    /// Starting the bus clears the interface's queues, so the events that
+    /// piled up while no program read them are gone. At most one packet of
+    /// them, up to three events, may still arrive first: the one the
+    /// interface had already handed to its USB controller.
+    ///
+    /// Fails with [`Error::ProtocolMismatch`] when the interface reports
+    /// another protocol version, before anything else is sent to it.
+    pub fn open(device_info: nusb::DeviceInfo) -> Result<Self> {
         let device = device_info
             .open()
             .wait()
@@ -46,12 +63,82 @@ impl UsbCanDevice {
             .endpoint::<Bulk, In>(BULK_IN_EP)
             .map_err(Error::CouldNotOpenDevice)?;
 
-        Ok(Self {
+        let device = Self {
+            interface,
             ep_out,
             ep_in,
             events: VecDeque::new(),
             pending_error: None,
-        })
+        };
+
+        let info = device
+            .interface
+            .control_in(control_in(ControlRequest::GetDeviceInfo), CONTROL_TIMEOUT)
+            .wait()?;
+        decode_device_info(&info)?;
+
+        device
+            .interface
+            .control_out(control_out(ControlRequest::StartBus, &[]), CONTROL_TIMEOUT)
+            .wait()?;
+
+        Ok(device)
+    }
+
+    /// Asks the interface for its protocol version, firmware version and
+    /// serial number.
+    pub async fn device_info(&self) -> Result<DeviceInfo> {
+        let info = self
+            .interface
+            .control_in(control_in(ControlRequest::GetDeviceInfo), CONTROL_TIMEOUT)
+            .await?;
+
+        decode_device_info(&info)
+    }
+
+    /// Sets the bit rate and mode. A running bus restarts with them, a
+    /// stopped one keeps them for the next [`start`](Self::start). Either way
+    /// the interface clears its queues, and events not yet returned by
+    /// [`receive`](Self::receive) are dropped here too, so what comes next is
+    /// from the new config. Frames sent but not yet on the bus are discarded.
+    pub async fn set_config(&mut self, config: Config) -> Result<()> {
+        let (payload, len) = config.encode();
+
+        self.control_out(ControlRequest::SetConfig, &payload[..len])
+            .await?;
+        self.clear();
+
+        Ok(())
+    }
+
+    /// Starts the bus with the current config, or restarts it if it runs,
+    /// and clears the queues like [`set_config`](Self::set_config).
+    /// [`open`](Self::open) already does this.
+    pub async fn start(&mut self) -> Result<()> {
+        self.control_out(ControlRequest::StartBus, &[]).await?;
+        self.clear();
+
+        Ok(())
+    }
+
+    /// Stops the bus: the transceiver goes to standby, and frames sent until
+    /// the next [`start`](Self::start) are discarded. Events already received
+    /// can still be read.
+    pub async fn stop(&self) -> Result<()> {
+        self.control_out(ControlRequest::StopBus, &[]).await
+    }
+
+    async fn control_out(&self, request: ControlRequest, data: &[u8]) -> Result<()> {
+        self.interface
+            .control_out(control_out(request, data), CONTROL_TIMEOUT)
+            .await?;
+
+        Ok(())
+    }
+
+    fn clear(&mut self) {
+        self.events.clear();
+        self.pending_error = None;
     }
 
     /// Sends one frame in a packet of its own.
@@ -96,6 +183,45 @@ impl UsbCanDevice {
     }
 }
 
+/// A vendor request to the interface with a data stage from the device.
+fn control_in(request: ControlRequest) -> ControlIn {
+    ControlIn {
+        control_type: ControlType::Vendor,
+        recipient: Recipient::Interface,
+        request: request.code(),
+        value: 0,
+        index: INTERFACE.into(),
+        length: MAX_PACKET_SIZE as u16,
+    }
+}
+
+/// A vendor request to the interface with `data` for the device.
+fn control_out(request: ControlRequest, data: &[u8]) -> ControlOut<'_> {
+    ControlOut {
+        control_type: ControlType::Vendor,
+        recipient: Recipient::Interface,
+        request: request.code(),
+        value: 0,
+        index: INTERFACE.into(),
+        data,
+    }
+}
+
+/// Reads a device info answer, refusing one of another protocol version
+/// before decoding the rest of it.
+fn decode_device_info(bytes: &[u8]) -> Result<DeviceInfo> {
+    let device = DeviceInfo::protocol_version_of(bytes)?;
+
+    if device != PROTOCOL_VERSION {
+        return Err(Error::ProtocolMismatch {
+            device,
+            host: PROTOCOL_VERSION,
+        });
+    }
+
+    Ok(DeviceInfo::decode(bytes)?)
+}
+
 /// Appends every event in `packet` to `events` and returns the error for a
 /// malformed tail, if there is one.
 fn unpack_into(packet: &[u8], events: &mut VecDeque<BusEvent>) -> Option<Error> {
@@ -112,7 +238,7 @@ fn unpack_into(packet: &[u8], events: &mut VecDeque<BusEvent>) -> Option<Error> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use can_usb_protocol::BusError;
+    use can_usb_protocol::{BusError, FirmwareVersion, PayloadError};
 
     fn events() -> [BusEvent; 3] {
         [
@@ -167,5 +293,93 @@ mod tests {
 
         assert!(matches!(error, Some(Error::Unpack(_))));
         assert_eq!(Vec::from(queue), events());
+    }
+
+    fn device_info() -> DeviceInfo {
+        DeviceInfo {
+            protocol_version: PROTOCOL_VERSION,
+            firmware_version: FirmwareVersion {
+                major: 1,
+                minor: 2,
+                patch: 3,
+            },
+            serial: [0xab; DeviceInfo::SERIAL_LEN],
+        }
+    }
+
+    fn encoded(info: &DeviceInfo) -> Vec<u8> {
+        let mut buf = [0; MAX_PACKET_SIZE];
+        let len = info.encode(&mut buf).unwrap();
+        buf[..len].to_vec()
+    }
+
+    #[test]
+    fn device_info_of_this_version_decodes() {
+        assert_eq!(
+            decode_device_info(&encoded(&device_info())).unwrap(),
+            device_info()
+        );
+    }
+
+    #[test]
+    fn another_protocol_version_is_a_mismatch() {
+        let newer = DeviceInfo {
+            protocol_version: PROTOCOL_VERSION + 1,
+            ..device_info()
+        };
+
+        assert!(matches!(
+            decode_device_info(&encoded(&newer)),
+            Err(Error::ProtocolMismatch { device, host })
+                if device == PROTOCOL_VERSION + 1 && host == PROTOCOL_VERSION
+        ));
+    }
+
+    /// A newer device may lay out the rest differently; the version alone
+    /// decides.
+    #[test]
+    fn a_mismatch_is_reported_whatever_follows_the_version() {
+        let mut bytes = vec![(PROTOCOL_VERSION + 1) as u8];
+        bytes.extend_from_slice(&[0xff; 40]);
+
+        assert!(matches!(
+            decode_device_info(&bytes),
+            Err(Error::ProtocolMismatch { .. })
+        ));
+    }
+
+    #[test]
+    fn a_truncated_device_info_is_a_payload_error() {
+        let bytes = encoded(&device_info());
+
+        assert!(matches!(
+            decode_device_info(&bytes[..bytes.len() - 1]),
+            Err(Error::Payload(PayloadError::Malformed))
+        ));
+        assert!(matches!(
+            decode_device_info(&[]),
+            Err(Error::Payload(PayloadError::Malformed))
+        ));
+    }
+
+    #[test]
+    fn control_requests_address_the_interface() {
+        let request = control_in(ControlRequest::GetDeviceInfo);
+
+        assert_eq!(request.control_type, ControlType::Vendor);
+        assert_eq!(request.recipient, Recipient::Interface);
+        assert_eq!(request.request, 0x10);
+        assert_eq!(request.value, 0);
+        assert_eq!(request.index, u16::from(INTERFACE));
+        assert_eq!(usize::from(request.length), MAX_PACKET_SIZE);
+
+        let request = control_out(ControlRequest::SetConfig, &[2, 1]);
+
+        assert_eq!(request.control_type, ControlType::Vendor);
+        assert_eq!(request.recipient, Recipient::Interface);
+        assert_eq!(request.request, 0x11);
+        assert_eq!(request.value, 0);
+        assert_eq!(request.index, u16::from(INTERFACE));
+        assert_eq!(request.data, [2, 1]);
     }
 }

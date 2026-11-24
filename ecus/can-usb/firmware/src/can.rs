@@ -1,84 +1,229 @@
-use crate::board::Transceiver;
-use crate::{EventSender, FrameReceiver, leds};
-use can_usb_protocol::{BusError, BusEvent, Forwarded, Frame, OverrunCounter};
-use core::future::poll_fn;
-use defmt::{debug, error, trace, unwrap, warn};
+//! The CAN task: the only owner of FDCAN1 and the transceiver.
+//!
+//! It runs the bus as the latest [`BusCommand`] from the USB control
+//! handler says. Each command stops the bus, clears the queues as the
+//! command says, and starts the bus again with the command's config if it
+//! is to run. While the bus runs, receiving and transmitting are two loops
+//! in this task, and a new command ends both.
+
+use crate::board::{CanPeripherals, Transceiver};
+use crate::{ClearSignal, CommandSignal, EventSender, FrameReceiver, leds};
+use can_usb_protocol::{
+    Bitrate, BusCommand, BusError, BusEvent, Config, Forwarded, Frame, Mode, OverrunCounter,
+};
+use core::convert::Infallible;
+use core::future::{pending, poll_fn};
+use defmt::{debug, error, info, trace, unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either, select};
+use embassy_futures::select::{Either, Either3, select, select3};
 use embassy_stm32::can::config::{GlobalFilter, NonMatchingFilter, TxBufferMode};
 use embassy_stm32::can::{CanConfigurator, CanRx, CanTx, OperatingMode, filter};
 use embassy_time::Instant;
 use embedded_can::Frame as _;
 
 pub struct CanBus {
-    can_config: CanConfigurator<'static>,
+    peripherals: CanPeripherals,
     transceiver: Transceiver,
     event_sender: EventSender,
     frame_receiver: FrameReceiver,
+    commands: &'static CommandSignal,
+    events_cleared: &'static ClearSignal,
+    frames_cleared: &'static ClearSignal,
 }
 
 impl CanBus {
+    /// `events_cleared` and `frames_cleared` are raised after the task
+    /// clears the event and the frame queue, so that the USB tasks drop what
+    /// they had already taken out of them.
     pub fn new(
-        can: CanConfigurator<'static>,
+        peripherals: CanPeripherals,
         transceiver: Transceiver,
         event_sender: EventSender,
         frame_receiver: FrameReceiver,
+        commands: &'static CommandSignal,
+        events_cleared: &'static ClearSignal,
+        frames_cleared: &'static ClearSignal,
     ) -> Self {
         Self {
-            can_config: can,
+            peripherals,
             transceiver,
             event_sender,
             frame_receiver,
+            commands,
+            events_cleared,
+            frames_cleared,
         }
     }
 
-    /// Takes the transceiver out of standby, starts FDCAN1 and spawns the
-    /// receive and transmit tasks. The caller holds the returned
-    /// [`Transceiver`] for as long as the bus runs: dropping it puts the
-    /// transceiver back in standby.
-    #[must_use = "dropping the transceiver puts it in standby"]
-    pub fn start(mut self, spawner: Spawner) -> Transceiver {
-        // Every standard and every extended identifier goes to RX FIFO 0.
-        // Remote frames are rejected by the controller: the protocol's
-        // Frame cannot say a frame is remote, so passing one on would hand
-        // the host a data frame that was never sent.
-        let properties = self.can_config.properties();
-        properties.set_standard_filter(
-            filter::StandardFilterSlot::_0,
-            filter::StandardFilter::accept_all_into_fifo0(),
-        );
-        properties.set_extended_filter(
-            filter::ExtendedFilterSlot::_0,
-            filter::ExtendedFilter::accept_all_into_fifo0(),
-        );
-        let global_filter = GlobalFilter::default()
-            .set_handle_standard_frames(NonMatchingFilter::IntoRxFifo0)
-            .set_handle_extended_frames(NonMatchingFilter::IntoRxFifo0)
-            .set_reject_remote_standard_frames(true)
-            .set_reject_remote_extended_frames(true);
-        // The TX buffers send in the order they were written. In this mode
-        // the driver's write() waits for a free buffer instead of evicting
-        // a queued frame of lower priority.
-        let config = self
-            .can_config
-            .config()
-            .set_global_filter(global_filter)
-            .set_tx_buffer_mode(TxBufferMode::Fifo);
-        self.can_config.set_config(config);
-        self.can_config.set_bitrate(500_000);
-        // The FDCAN pins are configured, so the transceiver may leave
-        // standby before FDCAN1 leaves init.
-        self.transceiver.wake();
-        let can = self.can_config.start(OperatingMode::NormalOperationMode);
-        let (can_tx, can_rx, _) = can.split();
-
+    /// Spawns the CAN task, which starts the bus with
+    /// [`BusCommand::POWER_ON`].
+    pub fn start(self, spawner: Spawner) {
         // Spawn failure means the single pool slot is already taken, i.e.
         // start() was called twice. That's a programming error and the
-        // device is useless without these tasks, so panic via defmt.
-        spawner.spawn(unwrap!(rx_task(can_rx, self.event_sender)));
-        spawner.spawn(unwrap!(tx_task(can_tx, self.frame_receiver)));
+        // device is useless without this task, so panic via defmt.
+        spawner.spawn(unwrap!(can_task(self)));
+    }
 
-        self.transceiver
+    /// Clears what `command` says to clear. The bus is stopped.
+    fn clear(&mut self, command: BusCommand, overrun: &mut OverrunCounter) {
+        if command.clear_events {
+            self.event_sender.clear();
+            *overrun = OverrunCounter::new();
+            self.events_cleared.signal(());
+        }
+
+        // Frames queued for one bit rate or mode must not go out in the
+        // next. Up to three more were in FDCAN1's transmit buffers; the
+        // reset when the bus starts again clears those without a count.
+        let mut discarded = 0u32;
+        while self.frame_receiver.try_receive().is_ok() {
+            discarded += 1;
+        }
+        self.frames_cleared.signal(());
+        if discarded > 0 {
+            info!("Discarded {} queued frames", discarded);
+        }
+    }
+
+    /// Runs the bus with `config` until the next command, and returns it.
+    async fn run(&mut self, config: Config, overrun: &mut OverrunCounter) -> BusCommand {
+        let (commands, event_sender, frame_receiver) =
+            (self.commands, self.event_sender, self.frame_receiver);
+        let mut can = self.peripherals.configurator();
+        configure(&mut can, config.bitrate);
+        // The FDCAN pins are configured, so the transceiver may leave
+        // standby before FDCAN1 leaves init.
+        if config.mode.connects_to_bus() {
+            self.transceiver.wake();
+        }
+        let (mut can_tx, mut can_rx, _) = can.start(operating_mode(config.mode)).split();
+        info!("Bus started: {}, {}", config.bitrate, config.mode);
+
+        let mut in_flight = None;
+        let mut discarded = 0u32;
+        let transmit = async {
+            if config.mode.transmits() {
+                transmit(&mut can_tx, frame_receiver, &mut in_flight).await
+            } else {
+                discard(frame_receiver, &mut discarded).await
+            }
+        };
+        let next = match select3(
+            commands.wait(),
+            receive(&mut can_rx, event_sender, overrun),
+            transmit,
+        )
+        .await
+        {
+            Either3::First(command) => command,
+            Either3::Second(never) | Either3::Third(never) => match never {},
+        };
+
+        // Standby first, so the bus never sees the TX pin float when
+        // dropping the controller disconnects it.
+        self.transceiver.standby();
+        drop(can_tx);
+        drop(can_rx);
+
+        discarded += u32::from(in_flight.is_some());
+        if discarded > 0 {
+            info!("Discarded {} frames from USB", discarded);
+        }
+        next
+    }
+
+    /// Keeps the bus stopped until the next command, and returns it. Frames
+    /// from the host are discarded and counted, and an overrun still pending
+    /// from before the stop is reported once there is room.
+    async fn stopped(&mut self, overrun: &mut OverrunCounter) -> BusCommand {
+        self.transceiver.standby();
+        info!("Bus stopped");
+
+        let mut discarded = 0u32;
+        let next = match select3(
+            self.commands.wait(),
+            discard(self.frame_receiver, &mut discarded),
+            report_overrun(self.event_sender, overrun),
+        )
+        .await
+        {
+            Either3::First(command) => command,
+            Either3::Second(never) | Either3::Third(never) => match never {},
+        };
+
+        if discarded > 0 {
+            info!(
+                "Discarded {} frames from USB while the bus was stopped",
+                discarded
+            );
+        }
+        next
+    }
+}
+
+#[embassy_executor::task]
+async fn can_task(mut bus: CanBus) {
+    let mut command = BusCommand::POWER_ON;
+    let mut overrun = OverrunCounter::new();
+
+    loop {
+        debug!("Bus command: {}", command);
+        bus.clear(command, &mut overrun);
+
+        command = if command.run {
+            bus.run(command.config, &mut overrun).await
+        } else {
+            bus.stopped(&mut overrun).await
+        };
+    }
+}
+
+/// Sets up a fresh FDCAN1 for `bitrate`.
+///
+/// From the 48 MHz FDCAN clock, embassy's timing calculation gives 16 time
+/// quanta per bit at 125, 250 and 500 kbit/s (prescaler 24, 12 and 6,
+/// segments 13 and 2) and 8 at 1 Mbit/s (prescaler 6, segments 6 and 1).
+/// All four sample at 87.5 %, with a synchronisation jump width of one time
+/// quantum. It finds a solution for each [`Bitrate`], so its unwrap cannot
+/// fire.
+fn configure(can: &mut CanConfigurator<'_>, bitrate: Bitrate) {
+    // Every standard and every extended identifier goes to RX FIFO 0.
+    // Remote frames are rejected by the controller: the protocol's Frame
+    // cannot say a frame is remote, so passing one on would hand the host a
+    // data frame that was never sent.
+    let properties = can.properties();
+    properties.set_standard_filter(
+        filter::StandardFilterSlot::_0,
+        filter::StandardFilter::accept_all_into_fifo0(),
+    );
+    properties.set_extended_filter(
+        filter::ExtendedFilterSlot::_0,
+        filter::ExtendedFilter::accept_all_into_fifo0(),
+    );
+    let global_filter = GlobalFilter::default()
+        .set_handle_standard_frames(NonMatchingFilter::IntoRxFifo0)
+        .set_handle_extended_frames(NonMatchingFilter::IntoRxFifo0)
+        .set_reject_remote_standard_frames(true)
+        .set_reject_remote_extended_frames(true);
+    // The TX buffers send in the order they were written. In this mode the
+    // driver's write() waits for a free buffer instead of evicting a queued
+    // frame of lower priority.
+    let config = can
+        .config()
+        .set_global_filter(global_filter)
+        .set_tx_buffer_mode(TxBufferMode::Fifo);
+    can.set_config(config);
+    can.set_bitrate(bitrate.bits_per_second());
+}
+
+/// The FDCAN1 mode for each of the protocol's modes. Listen-only is bus
+/// monitoring: the controller receives, but never sends a dominant bit, so
+/// it neither transmits nor acknowledges.
+fn operating_mode(mode: Mode) -> OperatingMode {
+    match mode {
+        Mode::Normal => OperatingMode::NormalOperationMode,
+        Mode::ListenOnly => OperatingMode::BusMonitoringMode,
+        Mode::InternalLoopback => OperatingMode::InternalLoopbackMode,
     }
 }
 
@@ -89,10 +234,11 @@ impl CanBus {
 /// a trace. Events that do not fit are counted by the [`OverrunCounter`]
 /// and reported as one `Overrun` as soon as there is room: ahead of the next
 /// event, or by itself once the USB side takes an event out of the queue.
-#[embassy_executor::task]
-async fn rx_task(mut can_rx: CanRx<'static>, event_sender: EventSender) {
-    let mut overrun = OverrunCounter::new();
-
+async fn receive(
+    can_rx: &mut CanRx<'_>,
+    event_sender: EventSender,
+    overrun: &mut OverrunCounter,
+) -> Infallible {
     loop {
         let read = if overrun.is_pending() {
             let room = poll_fn(|cx| event_sender.poll_ready_to_send(cx));
@@ -152,13 +298,33 @@ async fn rx_task(mut can_rx: CanRx<'static>, event_sender: EventSender) {
     }
 }
 
+/// Queues an overrun left pending when the bus stopped, once the USB side
+/// makes room for it.
+async fn report_overrun(event_sender: EventSender, overrun: &mut OverrunCounter) -> Infallible {
+    loop {
+        if !overrun.is_pending() {
+            pending::<()>().await;
+        }
+        poll_fn(|cx| event_sender.poll_ready_to_send(cx)).await;
+        if overrun.flush(|event| event_sender.try_send(event)) {
+            debug!("Overrun reported");
+        }
+    }
+}
+
 /// Sends the host's frames in the order they arrive. write() waits while
 /// all three TX buffers are taken, which in turn fills the frame queue and
 /// holds back the USB side.
-#[embassy_executor::task]
-async fn tx_task(mut can_tx: CanTx<'static>, frame_receiver: FrameReceiver) {
+///
+/// The frame being written is kept in `in_flight`, so that the caller can
+/// count it as discarded when a command ends the loop during the write.
+async fn transmit(
+    can_tx: &mut CanTx<'_>,
+    frame_receiver: FrameReceiver,
+    in_flight: &mut Option<Frame>,
+) -> Infallible {
     loop {
-        let frame = frame_receiver.receive().await;
+        let frame = *in_flight.insert(frame_receiver.receive().await);
 
         trace!("Sending frame: {}", frame);
 
@@ -176,6 +342,18 @@ async fn tx_task(mut can_tx: CanTx<'static>, frame_receiver: FrameReceiver) {
             // stops being true.
             None => error!("Refusing to send unrepresentable frame: {}", frame),
         }
+
+        *in_flight = None;
+    }
+}
+
+/// Takes the host's frames and counts them, for when the bus is stopped or
+/// listens only. The queue keeps draining, so the USB side never waits.
+async fn discard(frame_receiver: FrameReceiver, discarded: &mut u32) -> Infallible {
+    loop {
+        let frame = frame_receiver.receive().await;
+        trace!("Discarded frame: {}", frame);
+        *discarded = discarded.saturating_add(1);
     }
 }
 

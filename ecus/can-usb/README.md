@@ -17,7 +17,9 @@ Recipes: `just can-usb build | check | flash | erc | drc | export | ci`. The
 host library is built and tested by `just host ci`.
 
 ```sh
+cargo run -p can-usb-host -- info        # protocol and firmware version, serial
 cargo run -p can-usb-host -- listen      # print every frame on the bus
 cargo run -p can-usb-host -- ping        # send a frame every 5 s, print the reply
 cargo run -p can-usb-host -- throughput  # 1000 round trips as fast as possible
+cargo run -p can-usb-host -- listen --bitrate 250 --mode listen-only
 ```

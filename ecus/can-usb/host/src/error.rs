@@ -21,4 +21,13 @@ pub enum Error {
 
     #[error("Could not decode a packet from the device: {0}")]
     Unpack(#[from] can_usb_protocol::UnpackError),
+
+    #[error(
+        "The device speaks protocol version {device} and this program version {host}; \
+         update the one that is older"
+    )]
+    ProtocolMismatch { device: u16, host: u16 },
+
+    #[error("Bad control request payload: {0}")]
+    Payload(#[from] can_usb_protocol::PayloadError),
 }
