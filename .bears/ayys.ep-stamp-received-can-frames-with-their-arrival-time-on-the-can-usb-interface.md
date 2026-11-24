@@ -4,11 +4,12 @@ title: Stamp received CAN frames with their arrival time on the CAN/USB interfac
 status: open
 priority: P3
 created: "2026-11-24T17:47:20.725700526Z"
-updated: "2026-11-24T17:47:24.015683001Z"
+updated: "2026-11-24T18:58:28.826814352Z"
 tags:
   - can-usb
 depends_on:
   - ayys.cv
+attempts: 1
 ---
 
 ## Summary
@@ -27,3 +28,9 @@ Compute the arrival time in the firmware from the RX element's 16-bit timestamp 
 
 ## Not verifiable here
 Accuracy on a bus: compare against a second node's or a logic analyser's timing (bench).
+
+## Decision needed
+embassy's public API cannot give one-bit-time accuracy. `Envelope.ts` subtracts `20 ns · Δ` rounded up to whole microseconds, so inverting it pins Δ only to within about 50 bit times, and the driver does not return the `now` it used. Choose one route:
+
+1. **PAC read in the firmware.** Before `can_rx.read()`, read RXF0S (fill level, get index), the RXTS field (bits 15:0 of word R1) of the RX FIFO 0 element at that index, TSCV and `Instant::now()`. Arrival = now − Δ · bit time. The firmware is the only reader in non-buffered mode, so `read()` then takes that same element. Caveat: this widens the PAC use from ayys.sz to message RAM and duplicates embassy's message RAM layout (18-word elements after the filters, or the start address from RXF0C.F0SA).
+2. **Fix upstream.** Report to embassy-stm32 that `calc_ns_per_timer_tick` runs before `apply_config` writes NBTP and TSCC, and that the counter counts bit times. The tick is `nbrp · (1 + seg1 + seg2) · (tcp + 1) / f_fdcan`, taken from the config. Bump to a release with the fix and keep `Envelope.ts`.
