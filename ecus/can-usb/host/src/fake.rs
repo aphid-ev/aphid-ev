@@ -8,7 +8,7 @@
 use crate::transport::{TransferError, Transport};
 use can_usb_protocol::{ControlRequest, DeviceInfo, FirmwareVersion, MAX_PACKET_SIZE};
 use std::collections::VecDeque;
-use std::future::{Future, ready};
+use std::future::{Future, poll_fn};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::{Context, Poll, Waker};
 
@@ -25,6 +25,8 @@ struct State {
     controls: Vec<(ControlRequest, Vec<u8>, usize)>,
     /// Requests the device STALLs.
     stalls: Vec<ControlRequest>,
+    /// Control requests wait until this is cleared, like a slow device.
+    holding_controls: bool,
     /// Packets the device has to send, oldest first.
     to_host: VecDeque<Completion<Vec<u8>>>,
     /// IN reads waiting for a packet.
@@ -56,6 +58,7 @@ impl FakeDevice {
             info,
             controls: Vec::new(),
             stalls: Vec::new(),
+            holding_controls: false,
             to_host: VecDeque::new(),
             reads: 0,
             reads_done: VecDeque::new(),
@@ -85,6 +88,39 @@ impl FakeDevice {
     /// For each request, the OUT transfers pending when it was sent.
     pub fn writes_pending_at_controls(&self) -> Vec<usize> {
         self.state().controls.iter().map(|c| c.2).collect()
+    }
+
+    /// Makes control requests wait (`true`) or answer at once (`false`).
+    pub fn hold_controls(&self, holding: bool) {
+        let mut state = self.state();
+        state.holding_controls = holding;
+        if let Some(waker) = state.waker.take() {
+            waker.wake();
+        }
+    }
+
+    /// Answers `request` once controls are not held, like a control
+    /// transfer that ends when the device answers. Dropped before that, the
+    /// request never reaches the device.
+    fn control_future<T>(
+        &self,
+        request: ControlRequest,
+        data: &[u8],
+        answer: impl Fn(&State) -> T + Send,
+    ) -> impl Future<Output = Completion<T>> + Send {
+        let fake = self.clone();
+        let data = data.to_vec();
+
+        poll_fn(move |cx| {
+            let mut state = fake.state();
+
+            if state.holding_controls && !state.disconnected {
+                state.waker = Some(cx.waker().clone());
+                return Poll::Pending;
+            }
+
+            Poll::Ready(state.control(request, &data).map(|()| answer(&state)))
+        })
     }
 
     pub fn stall(&self, request: ControlRequest) {
@@ -213,10 +249,7 @@ impl Transport for FakeDevice {
         &self,
         request: ControlRequest,
     ) -> impl Future<Output = Completion<Vec<u8>>> + Send {
-        let mut state = self.state();
-        let result = state.control(request, &[]).map(|()| state.info.clone());
-
-        ready(result)
+        self.control_future(request, &[], |state| state.info.clone())
     }
 
     fn control_out(
@@ -224,7 +257,7 @@ impl Transport for FakeDevice {
         request: ControlRequest,
         data: &[u8],
     ) -> impl Future<Output = Completion<()>> + Send {
-        ready(self.state().control(request, data))
+        self.control_future(request, data, |_| ())
     }
 
     fn submit_in(&mut self) {

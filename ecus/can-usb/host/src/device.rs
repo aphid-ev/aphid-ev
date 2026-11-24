@@ -166,6 +166,10 @@ impl<T: Transport> UsbCanDevice<T> {
     ///   IN endpoint buffer.
     ///
     /// Send failures not yet reported are discarded with the frames.
+    ///
+    /// Dropped before it finishes, as by a timeout, the config may or may
+    /// not have reached the interface, and events from before may still
+    /// arrive. Later calls work as usual.
     pub async fn set_config(&mut self, config: Config) -> Result<()> {
         let (payload, len) = config.encode();
 
@@ -241,10 +245,12 @@ impl<T: Transport> UsbCanDevice<T> {
         Ok(())
     }
 
-    /// Sends `frames` in order like [`send`](Self::send) and puts the last
-    /// packet on its way without waiting for it. Stops at the first frame
-    /// that is not taken and returns its error; the frames before it were
-    /// taken.
+    /// Sends `frames` in order like [`send`](Self::send), then sends the
+    /// last packet without waiting for it if fewer than [`OUT_TRANSFERS`]
+    /// are in flight. Otherwise the last packet goes out at the next
+    /// [`flush`](Self::flush), [`receive`](Self::receive) or full packet.
+    /// Stops at the first frame that is not taken and returns its error;
+    /// the frames before it were taken.
     pub async fn send_all(&mut self, frames: &[Frame]) -> Result<()> {
         for frame in frames {
             self.send(frame).await?;
@@ -327,6 +333,9 @@ impl<T: Transport> UsbCanDevice<T> {
     /// `flush` and there is room, and moves IN packets into `events` while
     /// it has room. Registers `cx` with every queue it found pending.
     fn pump(&mut self, cx: &mut Context<'_>, flush: bool) {
+        // A set_config or start dropped before it finished leaves its reads
+        // cancelled and not requeued.
+        self.fill_in();
         self.reap_out(cx);
 
         if flush && self.packed > 0 && self.transport.pending_out() < OUT_TRANSFERS {
@@ -348,7 +357,12 @@ impl<T: Transport> UsbCanDevice<T> {
                 Poll::Ready(result) => {
                     let frames = self.in_flight.pop_front().unwrap_or(0);
 
-                    if let Err(error) = result {
+                    // Only `reset` cancels, and it discards those frames
+                    // on purpose, also when it was dropped before it
+                    // collected them.
+                    if let Err(error) = result
+                        && error != TransferError::Cancelled
+                    {
                         self.send_failed(frames, error);
                     }
                 }
@@ -386,6 +400,9 @@ impl<T: Transport> UsbCanDevice<T> {
         match packet {
             Ok(packet) => unpack_into(&packet, &mut self.events),
             Err(TransferError::Disconnected) => self.disconnected = true,
+            // A read `reset` cancelled, collected late because the reset
+            // was dropped. What it brought is from before the reset.
+            Err(TransferError::Cancelled) => {}
             Err(error) => self.events.push_back(Err(error.into())),
         }
 

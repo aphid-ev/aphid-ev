@@ -584,3 +584,58 @@ fn a_truncated_device_info_is_a_payload_error() {
         Err(Error::Payload(PayloadError::Malformed))
     ));
 }
+
+#[test]
+fn a_set_config_dropped_during_the_request_leaves_the_device_working() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.hold_controls(true);
+
+    {
+        let mut set_config = pin!(device.set_config(Config::DEFAULT));
+        assert!(poll(set_config.as_mut()).is_pending());
+        // Dropped here, as by a timeout shorter than the control timeout.
+    }
+    assert_eq!(fake.reads_queued(), 0);
+    fake.hold_controls(false);
+
+    let mut receive = pin!(device.receive());
+    assert!(poll(receive.as_mut()).is_pending());
+    assert_eq!(fake.reads_queued(), IN_TRANSFERS);
+
+    fake.send_packet(packet(&[event(1)]));
+    assert!(matches!(poll(receive.as_mut()), Poll::Ready(Ok(e)) if e == event(1)));
+}
+
+#[test]
+fn set_config_waits_for_a_slow_device() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.hold_controls(true);
+
+    let mut set_config = pin!(device.set_config(Config::DEFAULT));
+    assert!(poll(set_config.as_mut()).is_pending());
+    fake.hold_controls(false);
+
+    assert!(matches!(poll(set_config.as_mut()), Poll::Ready(Ok(()))));
+    assert_eq!(fake.controls().last().unwrap().0, ControlRequest::SetConfig);
+    assert_eq!(fake.reads_queued(), IN_TRANSFERS);
+}
+
+#[test]
+fn transfers_cancelled_by_a_dropped_reset_are_not_errors() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
+    // Reads and writes a dropped reset cancelled and never collected.
+    fake.fail_read(TransferError::Cancelled);
+    fake.send_packet(packet(&[event(1)]));
+    fake.fail_next_write(TransferError::Cancelled);
+    now(device.send(&frame(1))).unwrap();
+
+    assert_eq!(now(device.receive()).unwrap(), event(1));
+    now(device.flush()).unwrap();
+    now(device.send(&frame(2))).unwrap();
+    now(device.flush()).unwrap();
+    assert_eq!(received_frames(&fake), [frame(2)]);
+}
