@@ -521,8 +521,9 @@ fn a_program_that_only_sends_still_collects_events_up_to_the_limit() {
     for _ in 0..packets {
         fake.send_packet(packet(&events()));
     }
-    for n in 0..10 {
-        now(device.send(&frame(n))).unwrap();
+    // Each send collects at most one round of the queued reads.
+    for n in 0..packets / IN_TRANSFERS + 1 {
+        now(device.send(&frame(n as u8))).unwrap();
     }
 
     // The library stops collecting at the limit; the rest waits on the
@@ -623,19 +624,83 @@ fn set_config_waits_for_a_slow_device() {
 }
 
 #[test]
-fn transfers_cancelled_by_a_dropped_reset_are_not_errors() {
+fn transfers_cancelled_by_a_dropped_set_config_are_discarded_when_they_come_back() {
     let fake = FakeDevice::new();
     let mut device = open(&fake);
 
-    // Reads and writes a dropped reset cancelled and never collected.
+    // A read that finished before the reset, with events from before it.
+    fake.send_packet(packet(&[event(1)]));
+    fake.accept(false);
+    now(device.send_all(&[frame(1), frame(2)])).unwrap();
+    fake.defer_cancels();
+
+    {
+        let mut set_config = pin!(device.set_config(Config::DEFAULT));
+        assert!(poll(set_config.as_mut()).is_pending());
+        // Dropped while waiting for the cancelled transfers.
+    }
+    fake.finish_cancels();
+    fake.accept(true);
+
+    let next = device.try_receive();
+    assert!(next.is_none(), "{next:?}");
+    now(device.flush()).unwrap();
+    assert!(fake.received().is_empty());
+
+    fake.send_packet(packet(&[event(2)]));
+    assert_eq!(now(device.receive()).unwrap(), event(2));
+    now(device.send(&frame(3))).unwrap();
+    now(device.flush()).unwrap();
+    assert_eq!(received_frames(&fake), [frame(3)]);
+    assert_eq!(fake.reads_queued(), IN_TRANSFERS);
+}
+
+#[test]
+fn a_write_cancelled_by_someone_else_loses_its_frames_loudly() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.fail_next_write(TransferError::Cancelled);
+
+    now(device.send(&frame(1))).unwrap();
+    now(device.send(&frame(2))).unwrap();
+
+    assert!(matches!(
+        now(device.flush()),
+        Err(Error::SendFailed {
+            frames: 2,
+            source: TransferError::Cancelled
+        })
+    ));
+}
+
+#[test]
+fn a_read_cancelled_by_someone_else_is_reported_in_its_place() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
     fake.fail_read(TransferError::Cancelled);
     fake.send_packet(packet(&[event(1)]));
-    fake.fail_next_write(TransferError::Cancelled);
-    now(device.send(&frame(1))).unwrap();
 
+    assert!(matches!(
+        now(device.receive()),
+        Err(Error::Transfer(TransferError::Cancelled))
+    ));
     assert_eq!(now(device.receive()).unwrap(), event(1));
-    now(device.flush()).unwrap();
-    now(device.send(&frame(2))).unwrap();
-    now(device.flush()).unwrap();
-    assert_eq!(received_frames(&fake), [frame(2)]);
+}
+
+#[test]
+fn reads_that_fail_as_soon_as_they_are_submitted_do_not_spin() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.fail_reads_at_submit(TransferError::Cancelled);
+    fake.fail_read(TransferError::Cancelled);
+
+    // Each call returns instead of resubmitting forever.
+    for _ in 0..3 * IN_TRANSFERS {
+        assert!(matches!(
+            device.try_receive(),
+            Some(Err(Error::Transfer(TransferError::Cancelled)))
+        ));
+    }
+    assert!(device.events.len() <= EVENT_QUEUE_LIMIT);
 }

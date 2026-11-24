@@ -57,6 +57,11 @@ pub struct UsbCanDevice<T: Transport = NusbTransport> {
     send_error: Option<Error>,
     /// The interface is gone; every call fails.
     disconnected: bool,
+    /// The oldest IN and OUT transfers that `reset` cancelled and nobody
+    /// has collected yet, because the reset was dropped. Their completions
+    /// are discarded, whatever their status.
+    discard_in: usize,
+    discard_out: usize,
 }
 
 impl UsbCanDevice<NusbTransport> {
@@ -119,6 +124,8 @@ impl<T: Transport> UsbCanDevice<T> {
             in_flight: VecDeque::new(),
             send_error: None,
             disconnected: false,
+            discard_in: 0,
+            discard_out: 0,
         };
 
         device.device_info().await?;
@@ -168,8 +175,9 @@ impl<T: Transport> UsbCanDevice<T> {
     /// Send failures not yet reported are discarded with the frames.
     ///
     /// Dropped before it finishes, as by a timeout, the config may or may
-    /// not have reached the interface, and events from before may still
-    /// arrive. Later calls work as usual.
+    /// not have reached the interface. The transfers it cancelled are
+    /// still discarded when they come back, with whatever they brought,
+    /// and later calls work as usual.
     pub async fn set_config(&mut self, config: Config) -> Result<()> {
         let (payload, len) = config.encode();
 
@@ -343,12 +351,21 @@ impl<T: Transport> UsbCanDevice<T> {
             self.reap_out(cx);
         }
 
-        while self.events.len() < EVENT_QUEUE_LIMIT && self.transport.pending_in() > 0 {
+        // At most one round of the queued reads per call: a read that fails
+        // as soon as it is submitted would otherwise keep this loop going.
+        for _ in 0..IN_TRANSFERS {
+            if self.events.len() >= EVENT_QUEUE_LIMIT || self.transport.pending_in() == 0 {
+                return;
+            }
+
             match self.transport.poll_in(cx) {
                 Poll::Ready(packet) => self.take_packet(packet),
-                Poll::Pending => break,
+                Poll::Pending => return,
             }
         }
+
+        // More may be ready; the caller polls again instead of waiting.
+        cx.waker().wake_by_ref();
     }
 
     fn reap_out(&mut self, cx: &mut Context<'_>) {
@@ -357,12 +374,10 @@ impl<T: Transport> UsbCanDevice<T> {
                 Poll::Ready(result) => {
                     let frames = self.in_flight.pop_front().unwrap_or(0);
 
-                    // Only `reset` cancels, and it discards those frames
-                    // on purpose, also when it was dropped before it
-                    // collected them.
-                    if let Err(error) = result
-                        && error != TransferError::Cancelled
-                    {
+                    if self.discard_out > 0 {
+                        self.discard_out -= 1;
+                        self.disconnected |= result == Err(TransferError::Disconnected);
+                    } else if let Err(error) = result {
                         self.send_failed(frames, error);
                     }
                 }
@@ -398,11 +413,11 @@ impl<T: Transport> UsbCanDevice<T> {
     /// Queues the events of a finished IN read and starts the next read.
     fn take_packet(&mut self, packet: std::result::Result<Vec<u8>, TransferError>) {
         match packet {
-            Ok(packet) => unpack_into(&packet, &mut self.events),
             Err(TransferError::Disconnected) => self.disconnected = true,
-            // A read `reset` cancelled, collected late because the reset
-            // was dropped. What it brought is from before the reset.
-            Err(TransferError::Cancelled) => {}
+            // A read a dropped reset cancelled: what it brought is from
+            // before the reset.
+            _ if self.discard_in > 0 => self.discard_in -= 1,
+            Ok(packet) => unpack_into(&packet, &mut self.events),
             Err(error) => self.events.push_back(Err(error.into())),
         }
 
@@ -420,15 +435,18 @@ impl<T: Transport> UsbCanDevice<T> {
     async fn reset(&mut self, requests: &[(ControlRequest, &[u8])]) -> Result<()> {
         self.connected()?;
 
-        self.transport.cancel_out();
-        self.transport.cancel_in();
-        poll_fn(|cx| self.poll_drained(cx)).await;
-
+        // Cleared first, so that a reset dropped from here on has
+        // discarded them too.
         self.packer.clear();
         self.packed = 0;
-        self.in_flight.clear();
         self.send_error = None;
         self.events.clear();
+
+        self.transport.cancel_out();
+        self.transport.cancel_in();
+        self.discard_out = self.transport.pending_out();
+        self.discard_in = self.transport.pending_in();
+        poll_fn(|cx| self.poll_drained(cx)).await;
         self.connected()?;
 
         let mut result = Ok(());
@@ -445,20 +463,24 @@ impl<T: Transport> UsbCanDevice<T> {
         result
     }
 
-    /// Ready once every transfer has come back, whatever its result.
+    /// Ready once every cancelled transfer has come back, whatever its
+    /// result.
     fn poll_drained(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        while self.transport.pending_out() > 0 {
+        while self.discard_out > 0 {
             match self.transport.poll_out(cx) {
                 Poll::Ready(result) => {
+                    self.discard_out -= 1;
+                    self.in_flight.pop_front();
                     self.disconnected |= result == Err(TransferError::Disconnected);
                 }
                 Poll::Pending => return Poll::Pending,
             }
         }
 
-        while self.transport.pending_in() > 0 {
+        while self.discard_in > 0 {
             match self.transport.poll_in(cx) {
                 Poll::Ready(result) => {
+                    self.discard_in -= 1;
                     self.disconnected |= result == Err(TransferError::Disconnected);
                 }
                 Poll::Pending => return Poll::Pending,

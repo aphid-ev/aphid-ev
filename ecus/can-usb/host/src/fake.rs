@@ -44,6 +44,13 @@ struct State {
     /// The next OUT packet the device would take fails with this instead.
     fail_next_write: Option<TransferError>,
     disconnected: bool,
+    /// Cancelled transfers come back only at `finish_cancels`, like
+    /// cancellations the host controller takes a while to confirm.
+    defer_cancels: bool,
+    cancelled_reads: usize,
+    cancelled_writes: usize,
+    /// Every IN read fails with this as soon as it is submitted.
+    fail_reads_at_submit: Option<TransferError>,
     waker: Option<Waker>,
 }
 
@@ -68,6 +75,10 @@ impl FakeDevice {
             accepting: true,
             fail_next_write: None,
             disconnected: false,
+            defer_cancels: false,
+            cancelled_reads: 0,
+            cancelled_writes: 0,
+            fail_reads_at_submit: None,
             waker: None,
         })))
     }
@@ -150,12 +161,37 @@ impl FakeDevice {
 
     pub fn reads_queued(&self) -> usize {
         let state = self.state();
-        state.reads + state.reads_done.len()
+        state.reads + state.reads_done.len() + state.cancelled_reads
     }
 
     pub fn writes_queued(&self) -> usize {
         let state = self.state();
-        state.writes.len() + state.writes_done.len()
+        state.writes.len() + state.writes_done.len() + state.cancelled_writes
+    }
+
+    /// Cancelled transfers wait for [`finish_cancels`](Self::finish_cancels).
+    pub fn defer_cancels(&self) {
+        self.state().defer_cancels = true;
+    }
+
+    /// Every cancelled transfer comes back, and later ones at once.
+    pub fn finish_cancels(&self) {
+        let mut state = self.state();
+        state.defer_cancels = false;
+
+        for _ in 0..std::mem::take(&mut state.cancelled_reads) {
+            state.reads_done.push_back(Err(TransferError::Cancelled));
+        }
+        for _ in 0..std::mem::take(&mut state.cancelled_writes) {
+            state.writes_done.push_back(Err(TransferError::Cancelled));
+        }
+        if let Some(waker) = state.waker.take() {
+            waker.wake();
+        }
+    }
+
+    pub fn fail_reads_at_submit(&self, error: TransferError) {
+        self.state().fail_reads_at_submit = Some(error);
     }
 
     /// OUT packets the device took, oldest first.
@@ -262,6 +298,10 @@ impl Transport for FakeDevice {
 
     fn submit_in(&mut self) {
         let mut state = self.state();
+        if let Some(error) = state.fail_reads_at_submit {
+            state.reads_done.push_back(Err(error));
+            return;
+        }
         state.reads += 1;
         state.run();
     }
@@ -288,8 +328,12 @@ impl Transport for FakeDevice {
     fn cancel_in(&mut self) {
         let mut state = self.state();
 
-        for _ in 0..state.reads {
-            state.reads_done.push_back(Err(TransferError::Cancelled));
+        if state.defer_cancels {
+            state.cancelled_reads += state.reads;
+        } else {
+            for _ in 0..state.reads {
+                state.reads_done.push_back(Err(TransferError::Cancelled));
+            }
         }
         state.reads = 0;
     }
@@ -322,7 +366,11 @@ impl Transport for FakeDevice {
         let mut state = self.state();
 
         while let Some(_packet) = state.writes.pop_front() {
-            state.writes_done.push_back(Err(TransferError::Cancelled));
+            if state.defer_cancels {
+                state.cancelled_writes += 1;
+            } else {
+                state.writes_done.push_back(Err(TransferError::Cancelled));
+            }
         }
     }
 }
