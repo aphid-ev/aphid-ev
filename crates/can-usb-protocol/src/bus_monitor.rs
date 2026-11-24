@@ -13,6 +13,18 @@
 //! [`BUS_OFF_RECOVERY_DELAY_US`] after it first sees bus-off. If the
 //! controller is still bus-off that long after a recovery was started, it
 //! is started again.
+//!
+//! The host gets one or two state events per bus-off cycle. When a status
+//! shows the controller back on the bus, that state and the next bus-off
+//! are transitions like any other. When no status between two recoveries
+//! shows it back, because it is stuck in bus-off or went back faster than
+//! the poll interval, the second recovery reports bus-off again.
+//!
+//! Bus errors from the status and from the driver's receive path both go
+//! through the monitor. While the controller is bus-off it reports a bit 0
+//! error for every 11 recessive bits of the recovery; those are progress,
+//! not errors on the bus, so the monitor drops every error detected after a
+//! status that showed bus-off, until a status shows the controller back.
 
 use crate::{BusError, BusEvent, BusState};
 
@@ -65,6 +77,9 @@ pub struct BusMonitor {
     queued: Option<BusState>,
     /// When bus-off was first seen, or when the recovery was last started.
     bus_off_since_us: Option<u32>,
+    /// A recovery was started and no status has shown the controller back
+    /// on the bus since.
+    unrecovered: bool,
 }
 
 impl BusMonitor {
@@ -74,26 +89,34 @@ impl BusMonitor {
             current: None,
             queued: None,
             bus_off_since_us: None,
+            unrecovered: false,
         }
+    }
+
+    /// Takes a bus error that the driver's receive path read at `now_us`,
+    /// and returns the event to queue for the host, or `None` when it is
+    /// part of a bus-off recovery.
+    pub fn error(&self, now_us: u32, error: BusError) -> Option<BusEvent> {
+        (self.current != Some(BusState::BusOff)).then_some(BusEvent::BusError {
+            timestamp_us: now_us,
+            error,
+        })
     }
 
     /// Takes the controller's `status` read at `now_us`, on the protocol's
     /// wrapping microsecond clock.
     pub fn update(&mut self, now_us: u32, status: ControllerStatus) -> Update {
-        let was_bus_off = self.current == Some(BusState::BusOff);
+        // The error in this status happened before it, so it is judged by
+        // the state of the status before.
+        let error = status.error.and_then(|error| self.error(now_us, error));
         self.current = Some(status.state);
 
-        // While the controller is bus-off it reports a bit 0 error for every
-        // 11 recessive bits of the recovery. Those are progress, not errors
-        // on the bus, so only the error that came with the bus-off itself
-        // and those after the recovery are passed on.
-        let error = status
-            .error
-            .filter(|_| !was_bus_off)
-            .map(|error| BusEvent::BusError {
-                timestamp_us: now_us,
-                error,
-            });
+        let recover = self.recover(now_us, status.state);
+        if recover && self.unrecovered {
+            // A whole cycle without a status off bus-off: report it again.
+            self.queued = None;
+        }
+        self.unrecovered = recover || (self.unrecovered && status.state == BusState::BusOff);
 
         let state = (self.queued != Some(status.state)).then_some(BusEvent::BusState {
             timestamp_us: now_us,
@@ -102,7 +125,16 @@ impl BusMonitor {
             rec: status.rec,
         });
 
-        let recover = match (status.state, self.bus_off_since_us) {
+        Update {
+            error,
+            state,
+            recover,
+        }
+    }
+
+    /// Whether to start the bus-off recovery now, in `state`.
+    fn recover(&mut self, now_us: u32, state: BusState) -> bool {
+        match (state, self.bus_off_since_us) {
             (BusState::BusOff, None) => {
                 self.bus_off_since_us = Some(now_us);
                 false
@@ -118,12 +150,6 @@ impl BusMonitor {
                 self.bus_off_since_us = None;
                 false
             }
-        };
-
-        Update {
-            error,
-            state,
-            recover,
         }
     }
 
@@ -292,13 +318,88 @@ mod tests {
     }
 
     #[test]
-    fn a_bus_that_stays_off_is_recovered_again_every_100_ms_without_new_events() {
+    fn a_bus_that_stays_off_is_recovered_and_reported_again_every_100_ms() {
         let mut run = Run::default();
 
         run.hold(0, 400 * MS, bus_off());
 
         assert_eq!(run.recoveries, [100 * MS, 200 * MS, 300 * MS]);
-        assert_eq!(run.events, [state_event(0, BusState::BusOff, 248, 0)]);
+        // The first recovery follows the report of the bus-off itself. Each
+        // later one reports the cycle before it, once.
+        assert_eq!(
+            run.events,
+            [
+                state_event(0, BusState::BusOff, 248, 0),
+                state_event(200 * MS, BusState::BusOff, 248, 0),
+                state_event(300 * MS, BusState::BusOff, 248, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_bus_off_again_before_the_next_status_is_reported_once_per_cycle() {
+        // Recovery takes 2.8 ms and the next bus-off a few more, so no
+        // status shows the controller back. The counters differ per cycle.
+        let mut run = Run::default();
+
+        run.poll(0, active());
+        run.hold(10 * MS, 120 * MS, bus_off());
+        run.hold(120 * MS, 220 * MS, status(BusState::BusOff, 249, 0));
+        run.poll(220 * MS, status(BusState::BusOff, 250, 0));
+        run.hold(230 * MS, 320 * MS, status(BusState::BusOff, 250, 0));
+        run.poll(320 * MS, status(BusState::BusOff, 251, 0));
+
+        assert_eq!(run.recoveries, [110 * MS, 210 * MS, 310 * MS]);
+        assert_eq!(
+            run.events,
+            [
+                state_event(0, BusState::ErrorActive, 0, 0),
+                state_event(10 * MS, BusState::BusOff, 248, 0),
+                state_event(210 * MS, BusState::BusOff, 249, 0),
+                state_event(310 * MS, BusState::BusOff, 250, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_status_seen_back_on_the_bus_ends_the_quiet_cycle() {
+        // A slow recovery: the status right after it still shows bus-off,
+        // the next one error active, then bus-off again. That cycle is one
+        // pair of events and the next recovery adds none.
+        let mut run = Run::default();
+
+        run.hold(0, 110 * MS, bus_off());
+        assert_eq!(run.recoveries, [100 * MS]);
+        run.poll(110 * MS, active());
+        run.hold(120 * MS, 230 * MS, bus_off());
+
+        assert_eq!(run.recoveries, [100 * MS, 220 * MS]);
+        assert_eq!(
+            run.events,
+            [
+                state_event(0, BusState::BusOff, 248, 0),
+                state_event(110 * MS, BusState::ErrorActive, 0, 0),
+                state_event(120 * MS, BusState::BusOff, 248, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_repeated_bus_off_that_did_not_fit_is_offered_until_it_does() {
+        let mut monitor = BusMonitor::new();
+        let first = monitor.update(0, bus_off()).state.unwrap();
+        monitor.queued(first);
+        monitor.update(100 * MS, bus_off());
+
+        let update = monitor.update(200 * MS, bus_off());
+        assert!(update.recover);
+        assert!(update.state.is_some());
+        // Not queued.
+        let update = monitor.update(210 * MS, bus_off());
+        let again = update.state.unwrap();
+        monitor.queued(again);
+
+        assert_eq!(monitor.update(220 * MS, bus_off()).state, None);
     }
 
     #[test]
@@ -513,6 +614,32 @@ mod tests {
                 state_event(130 * MS, BusState::ErrorActive, 0, 0),
                 error_event(140 * MS, BusError::Crc),
             ]
+        );
+    }
+
+    #[test]
+    fn errors_from_the_receive_path_are_dropped_while_bus_off() {
+        let mut monitor = BusMonitor::new();
+
+        assert_eq!(
+            monitor.error(1, BusError::Crc),
+            Some(error_event(1, BusError::Crc))
+        );
+        monitor.update(10 * MS, active());
+        assert_eq!(
+            monitor.error(11 * MS, BusError::Acknowledge),
+            Some(error_event(11 * MS, BusError::Acknowledge))
+        );
+
+        monitor.update(20 * MS, bus_off());
+        assert_eq!(monitor.error(25 * MS, BusError::BitDominant), None);
+        monitor.update(120 * MS, bus_off());
+        assert_eq!(monitor.error(125 * MS, BusError::BitDominant), None);
+
+        monitor.update(130 * MS, active());
+        assert_eq!(
+            monitor.error(131 * MS, BusError::Stuff),
+            Some(error_event(131 * MS, BusError::Stuff))
         );
     }
 
