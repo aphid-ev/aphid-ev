@@ -302,5 +302,6 @@ The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 | `can-usb throughput` | Sends 1000 frames, waits for an event after each, and prints the rate |
 
 `ping` and `throughput` need another node on the bus to answer, such as an
-ECU running the `can-echo` test application. They send on `0x7ff`, which is
-also the bootloader's wakeup identifier.
+ECU running the `can-echo` test application. They send on `0x7cf`, which is
+kept free for bus tests just below the identifiers of the
+[[bootloader|CAN bootloader]]. It is `BUS_TEST_ID` in `crates/boot-protocol`.
