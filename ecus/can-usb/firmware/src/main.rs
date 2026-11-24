@@ -8,11 +8,12 @@ mod usb;
 
 use board::Board;
 use can::CanBus;
-use can_usb_protocol::{BusEvent, FirmwareVersion, Frame};
+use can_usb_protocol::{BusCommand, BusEvent, FirmwareVersion, Frame};
 use defmt::{debug, info};
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::channel::{self, Channel};
+use embassy_sync::signal::Signal;
 use embassy_time::Timer;
 use usb::UsbDevice;
 use {defmt_rtt as _, panic_probe as _};
@@ -59,6 +60,19 @@ pub type FrameReceiver = channel::Receiver<'static, ThreadModeRawMutex, Frame, F
 static EVENT_CHANNEL: EventChannel = Channel::new();
 static FRAME_CHANNEL: FrameChannel = Channel::new();
 
+/// The latest command from the USB control handler to the CAN task. The
+/// handler merges a command into one the CAN task has not taken yet with
+/// `BusCommand::then`, so none is lost.
+pub type CommandSignal = Signal<ThreadModeRawMutex, BusCommand>;
+static BUS_COMMANDS: CommandSignal = Signal::new();
+
+/// Raised by the CAN task after it cleared a queue. The USB task on the
+/// other end drops what it had already taken out of the queue and not yet
+/// passed on.
+pub type ClearSignal = Signal<ThreadModeRawMutex, ()>;
+static EVENTS_CLEARED: ClearSignal = Signal::new();
+static FRAMES_CLEARED: ClearSignal = Signal::new();
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let board = Board::new(embassy_stm32::init(board::config()));
@@ -70,14 +84,22 @@ async fn main(spawner: Spawner) {
         board.transceiver,
         EVENT_CHANNEL.sender(),
         FRAME_CHANNEL.receiver(),
+        &BUS_COMMANDS,
+        &EVENTS_CLEARED,
+        &FRAMES_CLEARED,
     );
-    let usb_device = UsbDevice::new(board.usb, EVENT_CHANNEL.receiver(), FRAME_CHANNEL.sender());
+    let usb_device = UsbDevice::new(
+        board.usb,
+        EVENT_CHANNEL.receiver(),
+        FRAME_CHANNEL.sender(),
+        &BUS_COMMANDS,
+        &EVENTS_CLEARED,
+        &FRAMES_CLEARED,
+    );
 
     leds::start(spawner, board.led_rx, board.led_tx, board.led_err);
     usb_device.start(spawner);
-    // Held for as long as the firmware runs: dropping it would put the
-    // transceiver back in standby.
-    let _transceiver = can_bus.start(spawner);
+    can_bus.start(spawner);
 
     loop {
         Timer::after_secs(10).await;

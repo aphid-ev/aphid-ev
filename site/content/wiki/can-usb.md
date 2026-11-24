@@ -15,7 +15,7 @@ flowchart LR
     DONGLE["CAN/USB interface<br/>firmware"]
 
     PC <-->|"USB bulk<br/>0xc0de:0xf055"| DONGLE
-    DONGLE <-->|"CAN, 500 kbit/s"| ECU
+    DONGLE <-->|"CAN, 125 kbit/s to 1 Mbit/s"| ECU
 
     subgraph ECU["ECU"]
         direction TB
@@ -49,7 +49,7 @@ A pull-up holds the transceiver's STB input high, so after reset the
 transceiver is in standby. In standby it does not drive the bus and does not
 pass received bits on. The firmware drives STB low once FDCAN1 is set up,
 just before FDCAN1 starts, and it drives STB high again whenever the bus is
-stopped.
+stopped. In internal loopback mode STB stays high the whole time.
 
 The interface has four LEDs:
 
@@ -92,8 +92,10 @@ After this, the ROM bootloader starts only while main flash is blank.
 
 # CAN side
 
-The interface runs FDCAN1 as classic CAN at 500 kbit/s. Its filters pass
-every standard and every extended identifier. The controller rejects remote
+The interface runs FDCAN1 as classic CAN at 125, 250 or 500 kbit/s or
+1 Mbit/s. The computer sets the bit rate and the mode with the
+[control requests](#control-requests). The interface starts at 500 kbit/s
+in normal mode. Its filters pass every standard and every extended identifier. The controller rejects remote
 frames, so the interface does not forward them. The protocol's `Frame` has
 no remote flag. The interface reports bus errors to the
 computer as they happen.
@@ -120,9 +122,11 @@ It logs this once over defmt when it starts discarding, and once with
 the number of events discarded when the computer takes packets again.
 Linux, Windows and macOS configure the device when it is plugged in,
 whether or not a program opens it. From then on the queue fills while no
-program reads. A program that opens the interface later first gets old
-events, and possibly an overrun. The configuration requests will address
-this.
+program reads. Start bus and set config clear it, together with the
+overrun count, and the host library sends start bus when it opens the
+interface. A program that opens it later starts with an empty queue, except
+for at most one packet of up to three old events that the firmware had
+already handed to the USB controller.
 
 The firmware does not see FDCAN1's own receive FIFO overflow, because
 embassy-stm32 0.6 does not expose the controller's message-lost flag.
@@ -134,7 +138,39 @@ frame is ever dropped to make room. When the buffers and the queue are
 full, the interface stops reading the bulk OUT endpoint, and the endpoint
 answers the computer's next packets with NAK until there is room. On a bus where no other node acknowledges, the
 controller retries the frame without end, so a send from the computer can
-wait forever.
+wait until the computer stops the bus or changes its config.
+
+While the bus is stopped, and in listen-only mode, the interface takes
+frames from the computer and discards them, so the bulk OUT endpoint never
+NAKs. It counts them and logs the count over defmt when the bus starts
+again or the mode changes. It does not report them to the computer as
+lost.
+
+## Bit timing
+
+FDCAN1 runs from a 48 MHz clock. The firmware lets embassy compute the bit
+timing, which samples every rate at 87.5 % with a resynchronisation jump
+width of one time quantum:
+
+| Bit rate | Prescaler | Time quanta per bit | Segment 1 | Segment 2 |
+| --- | --- | --- | --- | --- |
+| 125 kbit/s | 24 | 16 | 13 | 2 |
+| 250 kbit/s | 12 | 16 | 13 | 2 |
+| 500 kbit/s | 6 | 16 | 13 | 2 |
+| 1 Mbit/s | 6 | 8 | 6 | 1 |
+
+## Starting and stopping
+
+embassy-stm32 cannot take a running FDCAN1 back to configuration mode. To
+stop the bus, the firmware puts the transceiver in standby and drops the
+controller, which turns its clock off and disconnects its pins. To start
+it, the firmware resets FDCAN1 and configures it again from scratch. One
+task owns FDCAN1 and does both. The USB side only sends it commands.
+
+Every stop and every restart discards the frames waiting to be sent: those
+in the transmit queue, the one being written, and up to three in FDCAN1's
+transmit buffers. A frame queued for one bit rate never goes out at
+another. Only the frames in the transmit buffers are not counted.
 
 Per-frame log lines over defmt are at `trace` level. The firmware builds
 with `DEFMT_LOG=info` by default, so they are not compiled in.
@@ -268,6 +304,23 @@ Each request has request type vendor, recipient interface, `wValue` 0 and
 | Start bus | `0x12` | Computer to interface | None |
 | Stop bus | `0x13` | Computer to interface | None |
 
+What each request does depends on whether the bus runs:
+
+| Request | Bus running | Bus stopped |
+| --- | --- | --- |
+| Get device info | Answers | Answers |
+| Set config | Restarts the bus with the new config and clears the receive queue | Stores the config for the next start and clears the receive queue |
+| Start bus | Restarts the bus and clears the receive queue | Starts the bus with the stored config and clears the receive queue |
+| Stop bus | Stops the bus. The receive queue is kept | Nothing |
+
+Each start, restart and stop also discards the frames waiting to be sent.
+While the bus is stopped the transceiver is in standby.
+
+The interface STALLs a request it does not know, a request in the wrong
+direction, a `wValue` other than 0, start or stop with data, and a config
+that does not decode or has bytes after it. A rejected request changes
+nothing.
+
 The device info is the protocol version, the firmware version as major,
 minor and patch as varints, and the microcontroller's 96-bit unique ID as
 twelve raw bytes. Protocol 1, firmware 0.2.300 and serial `00 01 … 0b`
@@ -286,10 +339,13 @@ A config is a bit rate and a mode, one tag each:
 
 250 kbit/s in listen-only mode encodes as `01 01`. At power-on the
 interface runs at 500 kbit/s in normal mode, so a host that never
-configures it still works.
+configures it still works. After a USB reset it goes back to that, running.
+A stopped bus stays stopped when the program that stopped it exits, until
+another program starts it or the computer resets the USB device.
 
-The current firmware does not answer these requests yet and always runs
-with the power-on config.
+In listen-only mode FDCAN1 runs in bus monitoring mode. It receives every
+frame on the bus but never drives a dominant bit, so it neither transmits
+nor acknowledges.
 
 # Host access {#host-access}
 
@@ -299,15 +355,30 @@ with the power-on config.
   binds the WinUSB driver to it without a driver install.
 - macOS needs no setup.
 
+The host library in `ecus/can-usb/host` reads the device info when it
+opens the interface and refuses one with another protocol version. Then it
+sends start bus, so the program begins with an empty receive queue. It has
+calls for each request: `device_info()`, `set_config()`, `start()` and
+`stop()`.
+
 The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 
 | Command | What it does |
 | --- | --- |
+| `can-usb info` | Prints the protocol version, the firmware version and the serial number |
 | `can-usb listen` | Prints every frame and bus error with its timestamp |
 | `can-usb ping` | Sends a frame every 5 seconds and prints the next event |
 | `can-usb throughput` | Sends 1000 frames, waits for an event after each, and prints the rate |
 
+Every command except `info` first sets the config from two options:
+
+| Option | Values | Default |
+| --- | --- | --- |
+| `--bitrate`, `-b` | `125`, `250`, `500` or `1000`, in kbit/s | `500` |
+| `--mode`, `-m` | `normal`, `listen-only` or `loopback` | `normal` |
+
 `ping` and `throughput` need another node on the bus to answer, such as an
-ECU running the `can-echo` test application. They send on `0x7cf`, which is
+ECU running the `can-echo` test application. With `--mode loopback` the
+interface answers itself. They send on `0x7cf`, which is
 kept free for bus tests just below the identifiers of the
 [[bootloader|CAN bootloader]]. It is `BUS_TEST_ID` in `crates/boot-protocol`.

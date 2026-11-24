@@ -14,9 +14,10 @@
 //! | `LED_ERR` | PA5 | red, high = on |
 //! | HSE | PF0 / PF1 | 16 MHz crystal |
 
+use embassy_stm32::Peri;
 use embassy_stm32::can::{CanConfigurator, IT0InterruptHandler, IT1InterruptHandler};
 use embassy_stm32::gpio::{Level, Output, Speed};
-use embassy_stm32::peripherals::{FDCAN1, USB};
+use embassy_stm32::peripherals::{FDCAN1, PB8, PB9, USB};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::usb::{self, Driver};
 use embassy_stm32::{Config, Peripherals, bind_interrupts};
@@ -63,7 +64,7 @@ pub fn config() -> Config {
 /// The peripherals of the board, set up and named by what they do.
 pub struct Board {
     pub usb: Driver<'static, USB>,
-    pub can: CanConfigurator<'static>,
+    pub can: CanPeripherals,
     pub transceiver: Transceiver,
     pub led_rx: Output<'static>,
     pub led_tx: Output<'static>,
@@ -85,12 +86,40 @@ impl Board {
 
         Self {
             usb: Driver::new(p.USB, UsbIrqs, p.PA12, p.PA11),
-            can: CanConfigurator::new(p.FDCAN1, p.PB8, p.PB9, CanIrqs),
+            can: CanPeripherals {
+                fdcan: p.FDCAN1,
+                rx: p.PB8,
+                tx: p.PB9,
+            },
             transceiver,
             led_rx: Output::new(p.PA7, Level::Low, Speed::Low),
             led_tx: Output::new(p.PA6, Level::Low, Speed::Low),
             led_err: Output::new(p.PA5, Level::Low, Speed::Low),
         }
+    }
+}
+
+/// FDCAN1 and its pins, from which the CAN task builds a fresh controller
+/// each time it starts the bus.
+pub struct CanPeripherals {
+    fdcan: Peri<'static, FDCAN1>,
+    rx: Peri<'static, PB8>,
+    tx: Peri<'static, PB9>,
+}
+
+impl CanPeripherals {
+    /// Resets FDCAN1, connects its pins and returns it in configuration
+    /// mode. embassy-stm32 0.6 cannot take a started controller back to
+    /// configuration mode, so the bus is stopped by dropping the controller
+    /// and every part split from it, which turns FDCAN1's clock off and
+    /// disconnects its pins, and started again from here.
+    pub fn configurator(&mut self) -> CanConfigurator<'_> {
+        CanConfigurator::new(
+            self.fdcan.reborrow(),
+            self.rx.reborrow(),
+            self.tx.reborrow(),
+            CanIrqs,
+        )
     }
 }
 
@@ -111,10 +140,6 @@ impl Transceiver {
     }
 
     /// Enters standby. Call it whenever the bus is stopped.
-    #[expect(
-        dead_code,
-        reason = "the bus cannot be stopped until the stop request exists"
-    )]
     pub fn standby(&mut self) {
         self.stb.set_high();
     }

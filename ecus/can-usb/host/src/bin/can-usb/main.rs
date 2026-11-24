@@ -1,7 +1,7 @@
 use args::{Args, Command};
 use boot_protocol::BUS_TEST_ID;
 use can_usb_host::*;
-use can_usb_protocol::Frame;
+use can_usb_protocol::{Config, Frame};
 use clap::Parser;
 use std::time::Duration;
 use tokio::time::Instant;
@@ -17,13 +17,42 @@ async fn main() {
 
 async fn app(args: Args) -> Result<()> {
     let device_info = UsbCanDevice::find().ok_or(Error::DeviceNotFound)?;
-    let usb_can = UsbCanDevice::open(device_info)?;
+    let mut usb_can = UsbCanDevice::open(device_info)?;
+
+    if let Command::Info = args.command {
+        return info(&usb_can).await;
+    }
+
+    // Set every time, so the bus runs as asked whatever an earlier program
+    // left configured.
+    usb_can
+        .set_config(Config {
+            bitrate: args.bitrate,
+            mode: args.mode,
+        })
+        .await?;
 
     match args.command {
+        Command::Info => Ok(()),
         Command::Listen => listen(usb_can).await,
         Command::Ping { period } => ping(usb_can, Duration::from_secs(period)).await,
         Command::Throughput => throughput(usb_can).await,
     }
+}
+
+async fn info(usb_can: &UsbCanDevice) -> Result<()> {
+    let info = usb_can.device_info().await?;
+    let serial: String = info
+        .serial
+        .iter()
+        .map(|byte| format!("{byte:02X}"))
+        .collect();
+
+    println!("Protocol version: {}", info.protocol_version);
+    println!("Firmware version: {}", info.firmware_version);
+    println!("Serial number:    {serial}");
+
+    Ok(())
 }
 
 async fn listen(mut usb_can: UsbCanDevice) -> Result<()> {

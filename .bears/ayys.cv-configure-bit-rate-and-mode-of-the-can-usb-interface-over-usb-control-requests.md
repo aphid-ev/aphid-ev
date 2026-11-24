@@ -1,15 +1,16 @@
 ---
 id: ayys.cv
 title: Configure bit rate and mode of the CAN/USB interface over USB control requests
-status: open
+status: done
 priority: P1
 created: "2026-11-24T17:15:23.304110103Z"
-updated: "2026-11-24T17:15:23.304110103Z"
+updated: "2026-11-24T18:28:19.436332382Z"
 tags:
   - can-usb
 depends_on:
   - ayys.89
   - ayys.dr
+attempts: 1
 ---
 
 ## Summary
