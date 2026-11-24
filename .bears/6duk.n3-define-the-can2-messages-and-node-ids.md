@@ -20,7 +20,7 @@ A new crate in `crates/`, and a CAN2 section on the `ev-can` wiki page or a new 
 
 ## Acceptance criteria
 - [ ] Every message has an encoder, a decoder and a pinned-bytes test.
-- [ ] Node IDs and message IDs do not collide with the boot protocol's ranges (`0x7d0`-`0x7ff`) or with `boot_protocol::BUS_TEST_ID` (`0x7cf`, used by `can-usb ping` and `throughput`). A test checks both.
+- [ ] Node IDs and message IDs do not collide with the boot protocol's ranges (`0x7d0`-`0x7ff`) or with the bus test identifiers `boot_protocol::BUS_TEST_ID` (`0x7cf`) and `BUS_TEST_ECHO_ID` (`0x7ce`), used by `can-usb ping` and `throughput`. A test checks both.
 - [ ] `just host ci` passes.
 
 ## Edge cases
