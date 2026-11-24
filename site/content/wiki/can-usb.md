@@ -234,14 +234,15 @@ that both ends use. The firmware on the interface and the host library on
 the computer are installed separately, so the encoding is a compatibility
 contract between them. Tests in the crate pin the exact bytes of every type.
 
-| Constant | Value |
-| --- | --- |
-| Vendor and product ID | `0xc0de:0xf055` |
-| Interface | `0`, vendor-specific (class `0xff`) |
-| Bulk OUT, computer to interface | endpoint `0x01` |
-| Bulk IN, interface to computer | endpoint `0x82` |
-| Largest packet | 64 bytes |
-| Protocol version | 1 |
+| Constant | Name in the crate | Value |
+| --- | --- | --- |
+| Vendor and product ID | `VENDOR_ID`, `PRODUCT_ID` | `0xc0de:0xf055` |
+| Interface | `INTERFACE` | `0` |
+| Interface class | `INTERFACE_CLASS` | `0xff`, vendor-specific |
+| Bulk OUT, computer to interface | `BULK_OUT_EP` | endpoint `0x01` |
+| Bulk IN, interface to computer | `BULK_IN_EP` | endpoint `0x82` |
+| Largest packet | `MAX_PACKET_SIZE` | 64 bytes |
+| Protocol version | `PROTOCOL_VERSION` | 1 |
 
 The protocol version goes up with every change to an encoding or to what a
 request means. The interface reports it in its device info, so a host can

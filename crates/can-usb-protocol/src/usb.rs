@@ -16,6 +16,10 @@ pub const PRODUCT_ID: u16 = 0xf055;
 /// receives the control requests.
 pub const INTERFACE: u8 = 0;
 
+/// USB class code of [`INTERFACE`] and of the function around it:
+/// vendor-specific, with subclass and protocol 0.
+pub const INTERFACE_CLASS: u8 = 0xff;
+
 /// Bulk OUT endpoint: frames from the host to transmit on the bus.
 pub const BULK_OUT_EP: u8 = 0x01;
 
@@ -130,6 +134,7 @@ mod tests {
         assert_eq!(VENDOR_ID, 0xc0de);
         assert_eq!(PRODUCT_ID, 0xf055);
         assert_eq!(INTERFACE, 0);
+        assert_eq!(INTERFACE_CLASS, 0xff);
         assert_eq!(BULK_OUT_EP, 0x01);
         assert_eq!(BULK_IN_EP, 0x82);
         assert_eq!(MAX_PACKET_SIZE, 64);
