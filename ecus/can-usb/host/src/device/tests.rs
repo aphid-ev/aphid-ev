@@ -704,3 +704,108 @@ fn reads_that_fail_as_soon_as_they_are_submitted_do_not_spin() {
     }
     assert!(device.events.len() <= EVENT_QUEUE_LIMIT);
 }
+
+fn timed(time_us: u64, timestamp_us: u32) -> TimedEvent {
+    TimedEvent {
+        time_us,
+        event: event(timestamp_us),
+    }
+}
+
+#[test]
+fn receive_timed_unwraps_the_timestamp_across_packets() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
+    fake.send_packet(packet(&[event(u32::MAX - 9), event(u32::MAX)]));
+    fake.send_packet(packet(&[event(5)]));
+
+    assert_eq!(
+        now(device.receive_timed()).unwrap(),
+        timed(0xffff_fff6, u32::MAX - 9)
+    );
+    assert_eq!(
+        device.try_receive_timed().unwrap().unwrap(),
+        timed(0xffff_ffff, u32::MAX)
+    );
+    assert_eq!(
+        now(device.receive_timed()).unwrap(),
+        timed((1 << 32) + 5, 5)
+    );
+}
+
+/// The manager reads with `receive`; a program that mixes the two calls
+/// still gets every time in order.
+#[test]
+fn events_read_with_receive_still_count_towards_the_time() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
+    fake.send_packet(packet(&[event(u32::MAX), event(1)]));
+    fake.send_packet(packet(&[event(2)]));
+
+    assert_eq!(now(device.receive()).unwrap(), event(u32::MAX));
+    assert_eq!(device.try_receive().unwrap().unwrap(), event(1));
+    assert_eq!(
+        now(device.receive_timed()).unwrap(),
+        timed((1 << 32) + 2, 2)
+    );
+}
+
+/// The interface's clock runs on through a set config, and so does the
+/// time.
+#[test]
+fn the_time_carries_on_across_set_config_and_start() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
+    fake.send_packet(packet(&[event(u32::MAX - 1)]));
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, 0xffff_fffe);
+
+    now(device.set_config(Config::DEFAULT)).unwrap();
+    fake.send_packet(packet(&[event(3)]));
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, (1 << 32) + 3);
+
+    now(device.start()).unwrap();
+    fake.send_packet(packet(&[event(4)]));
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, (1 << 32) + 4);
+}
+
+/// A new connection starts over from its first event.
+#[test]
+fn a_new_device_starts_the_time_over() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.send_packet(packet(&[event(u32::MAX), event(7)]));
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, 0xffff_ffff);
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, (1 << 32) + 7);
+    drop(device);
+
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+    fake.send_packet(packet(&[event(7)]));
+    assert_eq!(now(device.receive_timed()).unwrap().time_us, 7);
+}
+
+#[test]
+fn a_timed_event_displays_its_unwrapped_time() {
+    assert_eq!(
+        timed((1 << 32) + 5, 5).to_string(),
+        "   4294967301 us Overrun(1 lost)"
+    );
+}
+
+#[test]
+fn errors_keep_their_place_among_timed_events() {
+    let fake = FakeDevice::new();
+    let mut device = open(&fake);
+
+    let mut bad = packet(&[event(1)]);
+    bad.push(0xff);
+    fake.send_packet(bad);
+    fake.send_packet(packet(&[event(2)]));
+
+    assert_eq!(now(device.receive_timed()).unwrap(), timed(1, 1));
+    assert!(matches!(now(device.receive_timed()), Err(Error::Unpack(_))));
+    assert_eq!(now(device.receive_timed()).unwrap(), timed(2, 2));
+}
