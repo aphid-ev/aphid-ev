@@ -1,3 +1,4 @@
+use nusb::transfer::TransferError;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -10,11 +11,25 @@ pub enum Error {
     #[error("Could not find any UsbCan devices connected")]
     DeviceNotFound,
 
-    #[error("USb error: {0}")]
+    #[error("USB error: {0}")]
     Usb(#[from] nusb::Error),
 
-    #[error("Failed transver: {0}")]
-    Transfer(#[from] nusb::transfer::TransferError),
+    #[error("Failed transfer: {0}")]
+    Transfer(#[from] TransferError),
+
+    /// The interface was unplugged or reset. Every later call fails with
+    /// this too; open the interface again.
+    #[error("The CAN/USB interface was disconnected")]
+    Disconnected,
+
+    /// Bulk OUT transfers failed, so `frames` frames that
+    /// [`send`](crate::UsbCanDevice::send) had accepted never reached the
+    /// interface. `source` is the first failure.
+    #[error("{frames} frames could not be sent to the interface: {source}")]
+    SendFailed {
+        frames: usize,
+        source: TransferError,
+    },
 
     #[error("Could not encode a frame: {0}")]
     Pack(#[from] can_usb_protocol::PackError),

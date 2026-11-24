@@ -9,7 +9,8 @@ pub struct UsbBus {
 }
 
 impl UsbBus {
-    /// Opens the first CAN/USB interface found.
+    /// Opens the first CAN/USB interface found and starts its bus at
+    /// 500 kbit/s in normal mode.
     pub fn open() -> Result<Self, BusError> {
         let info =
             UsbCanDevice::find().ok_or_else(|| error(can_usb_host::Error::DeviceNotFound))?;
@@ -24,10 +25,13 @@ fn error(error: impl std::error::Error + Send + Sync + 'static) -> BusError {
 }
 
 impl Bus for UsbBus {
+    /// Returns once the interface has taken the frame, as one packet of its
+    /// own, so a caller's timeout covers the transfer.
     async fn send(&mut self, frame: &Frame) -> Result<(), BusError> {
         let frame = can_usb_protocol::Frame::new(frame.id(), frame.data()).map_err(error)?;
 
-        self.device.send(&frame).await.map_err(error)
+        self.device.send(&frame).await.map_err(error)?;
+        self.device.flush().await.map_err(error)
     }
 
     /// Error frames on the bus are not failures of the interface; they are
