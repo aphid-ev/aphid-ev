@@ -24,3 +24,5 @@ The firmware counts frames lost to a full event queue (`OverrunCounter`, task `a
 
 ## Not verifiable here
 Forcing a hardware FIFO overflow needs a board (e.g. stall `rx_task` under bus load).
+## Update (ayys.sz)
+Task `ayys.sz` enabled embassy-stm32's `unstable-pac` feature for the bus-state poll and manual bus-off recovery (`ecus/can-usb/firmware/src/fdcan.rs`: reads PSR and ECR, clears `CCCR.INIT`). It went to the user in the epic's pull request as a decision. If they accept it, option (b) above costs only the IR.RF0L read and clear. If they reject it, `ayys.sz` has to be reworked as well.
