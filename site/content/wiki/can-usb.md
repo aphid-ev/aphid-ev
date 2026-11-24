@@ -153,16 +153,27 @@ unchanged. The controller then waits for 128 sequences of 11 recessive
 bits, about 2.8 ms at 500 kbit/s, and becomes error active, which sends the
 next state event. If it is still bus-off 100 ms after a recovery started,
 the firmware starts another. A shorted bus therefore goes bus-off and
-recovers over and over, one bus-off and one error-active event per round.
+recovers over and over. Each round sends one or two state events. If a
+status read sees the controller error active between two recoveries, the
+round sends that error-active event and the next bus-off event. If none
+does, the controller is stuck in bus-off or went back to it within 10 ms,
+and the next recovery sends one bus-off event with the counters of that
+moment.
 A stop, start or set config request while the firmware waits ends the
 wait, and the bus starts again or stays stopped as the request says. The
 recovery does not clear the queues, so events already queued for the
 computer stay queued.
 
-During the recovery the controller reports a bit error for every 11
-recessive bits it counts. The firmware does not pass those on as bus
-errors. Reading the last error code clears it in the controller, so each
-error reaches the computer once.
+The controller keeps its last error code until it is read, and reading
+clears it. Two places in the firmware read it: the status read every
+10 ms, and the embassy driver's receive path, which reads it whenever its
+receive FIFO is empty. Each error therefore reaches the computer once,
+from whichever read saw it first. During the recovery the controller
+reports a bit error for every 11 recessive bits it counts. The firmware
+drops every error from either read while the last status showed bus-off,
+until a status shows the controller back on the bus. The error that caused
+the bus-off is still sent, because it comes before the first status that
+shows bus-off.
 
 The firmware does not see FDCAN1's own receive FIFO overflow, because
 embassy-stm32 0.6 does not expose the controller's message-lost flag.
