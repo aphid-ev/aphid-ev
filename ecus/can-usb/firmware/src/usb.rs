@@ -1,7 +1,7 @@
 use crate::{EventReceiver, FrameSender};
 use can_usb_protocol::{
-    BULK_IN_EP, BULK_IN_PACKET_LIMIT, BULK_OUT_EP, BusEvent, Frame, INTERFACE, MAX_PACKET_SIZE,
-    MSOS_VENDOR_CODE, PRODUCT_ID, Packer, VENDOR_ID, unpack,
+    BULK_IN_EP, BULK_IN_PACKET_LIMIT, BULK_OUT_EP, Batcher, DropLog, DropTracker, Frame, INTERFACE,
+    MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID, VENDOR_ID, unpack,
 };
 use defmt::{error, info, unwrap};
 use embassy_executor::Spawner;
@@ -140,58 +140,54 @@ async fn read_task(mut read_ep: Endpoint<'static, USB, Out>, frame_sender: Frame
 async fn write_task(mut write_ep: Endpoint<'static, USB, In>, event_receiver: EventReceiver) {
     // Every packet stays one byte short of the endpoint's maximum, so each
     // ends its USB transfer and no zero-length packet is needed. See
-    // BULK_IN_PACKET_LIMIT.
-    let mut packer = Packer::with_limit(BULK_IN_PACKET_LIMIT);
-    // The event that did not fit the last packet. It opens the next one, so
-    // events keep their order.
-    let mut carry = None;
-    // Events dropped since the last write that went through, or None while
-    // writes go through.
-    let mut dropped: Option<usize> = None;
+    // BULK_IN_PACKET_LIMIT. The event that does not fit one packet stays in
+    // the batcher and opens the next, so events keep their order.
+    let mut batcher = Batcher::new(BULK_IN_PACKET_LIMIT);
+    let mut drops = DropTracker::new();
 
     loop {
-        // Wait for one event, then take whatever else is queued without
-        // waiting. No timer: on a quiet bus each event goes out at once.
-        let first = match carry.take() {
-            Some(event) => event,
-            None => event_receiver.receive().await,
+        // Wait for one event unless one is carried over, then take whatever
+        // else is queued without waiting. No timer: on a quiet bus each
+        // event goes out at once.
+        let first = if batcher.has_carry() {
+            None
+        } else {
+            Some(event_receiver.receive().await)
         };
-
-        packer.clear();
         let queued = core::iter::from_fn(|| event_receiver.try_receive().ok());
-        carry = packer.fill(core::iter::once(first).chain(queued), |event, error| {
+        let packet = batcher.build(first.into_iter().chain(queued), |event, error| {
             error!("Failed to encode {}: {}", event, error)
         });
 
-        if packer.is_empty() {
+        if packet.is_empty() {
             continue;
         }
 
-        // While the endpoint waits for the host to collect this packet, the
-        // event queue keeps filling and the next packet takes what it holds.
+        // The endpoint has one packet buffer. write waits until the host
+        // has collected the previous packet, copies this one in and returns,
+        // so this task builds the next packet while the host has yet to
+        // collect this one, and then waits for it. Events that arrive
+        // meanwhile go into the packet after that. A packet that write has
+        // accepted but the host never collects, because of a USB reset or
+        // an unplug, is lost and not counted.
         //
         // While no host has the device configured, the write fails at once
         // and the packet's events are discarded. That keeps the event queue
         // draining, so a host that connects late gets current events rather
         // than an overrun for frames from before it was there. Logged once
-        // per disconnect, with the count when writes go through again.
-        match write_ep.write(packer.as_bytes()).await {
-            Ok(()) => {
-                if let Some(count) = dropped.take() {
-                    info!("USB writes resumed, {} events dropped", count);
-                }
-            }
-            Err(error) => {
-                let events = unpack::<BusEvent>(packer.as_bytes()).count();
+        // when it starts, and once with the count when writes go through
+        // again.
+        let log = match write_ep.write(packet).await {
+            Ok(()) => drops.written(),
+            Err(_) => drops.failed(batcher.count()),
+        };
 
-                match dropped.as_mut() {
-                    Some(count) => *count += events,
-                    None => {
-                        info!("USB write failed, dropping events: {}", error);
-                        dropped = Some(events);
-                    }
-                }
+        match log {
+            Some(DropLog::Started) => info!("USB write failed, dropping events"),
+            Some(DropLog::Resumed { dropped }) => {
+                info!("USB writes resumed, {} events dropped", dropped)
             }
+            None => {}
         }
     }
 }
