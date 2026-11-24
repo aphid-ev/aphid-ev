@@ -250,8 +250,12 @@ async fn read_task(
             while let Some(frame) = frames.next() {
                 match frame {
                     Ok(frame) => {
-                        let sent = select(frame_sender.send(frame), frames_cleared.wait()).await;
-                        if let Either::Second(()) = sent {
+                        // The clear goes first: the CAN task empties the
+                        // queue before it raises the signal, so when both
+                        // are ready, send would succeed and queue a frame
+                        // from before the clear.
+                        let cleared = select(frames_cleared.wait(), frame_sender.send(frame)).await;
+                        if let Either::First(()) = cleared {
                             let rest = frames.filter(Result::is_ok).count();
                             info!("Discarded {} frames from USB", rest + 1);
                             break;
@@ -280,6 +284,12 @@ async fn write_task(
     let mut drops = DropTracker::new();
 
     loop {
+        // A clear raised since the last pass makes the carried event one
+        // from before it.
+        if events_cleared.try_take().is_some() {
+            debug!("Discarded {} events on a clear", batcher.discard());
+        }
+
         // Wait for one event unless one is carried over, then take whatever
         // else is queued without waiting. No timer: on a quiet bus each
         // event goes out at once.
@@ -288,7 +298,8 @@ async fn write_task(
         } else {
             Some(event_receiver.receive().await)
         };
-        // Every event from here on was queued after any earlier clear.
+        // A clear while waiting for `first` found the batcher empty and
+        // came before `first` was queued, so it concerns nothing held here.
         events_cleared.reset();
         let queued = core::iter::from_fn(|| event_receiver.try_receive().ok());
         let packet = batcher.build(first.into_iter().chain(queued), |event, error| {
@@ -317,16 +328,17 @@ async fn write_task(
         // When the CAN task clears the event queue while this waits, the
         // packet and the carried event are from before the clear and go
         // too. write() copies the packet only in the poll that returns, so
-        // cancelling it sends nothing. A packet the endpoint already holds
-        // is beyond reach and still goes to the host.
-        let written = select(write_ep.write(packet), events_cleared.wait()).await;
+        // cancelling it sends nothing. The clear is polled first, so a write
+        // that could complete in the same wake is not tried. A packet the
+        // endpoint already holds is beyond reach and still goes to the host.
+        let written = select(events_cleared.wait(), write_ep.write(packet)).await;
         let log = match written {
-            Either::First(Ok(())) => drops.written(),
-            Either::First(Err(_)) => drops.failed(batcher.count()),
-            Either::Second(()) => {
+            Either::First(()) => {
                 debug!("Discarded {} events on a clear", batcher.discard());
                 None
             }
+            Either::Second(Ok(())) => drops.written(),
+            Either::Second(Err(_)) => drops.failed(batcher.count()),
         };
 
         match log {
