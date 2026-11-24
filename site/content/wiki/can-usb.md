@@ -177,9 +177,15 @@ It waits for one event, adds every other event already in the receive
 queue until the next one does not fit, and sends the packet. The event
 that did not fit opens the next packet. There is no timer, so on a quiet
 bus each event goes out on its own as soon as it happens, and in a burst
-the packets fill up. While the computer has not yet collected a packet,
-the queue keeps filling, and the next packet carries the events queued in
-the meantime.
+the packets fill up.
+
+The IN endpoint has one packet buffer. The firmware hands a packet to the
+USB driver once the computer has collected the one before it, and then
+builds the next packet at once. That next packet then waits until the
+computer collects the one in the buffer, and events that arrive in the
+meantime go into the packet after it. A packet in the buffer that the
+computer never collects, because of a USB reset or an unplug, is lost, and
+the interface does not count it.
 
 An IN packet is at most 63 bytes, one short of the largest packet. A USB
 bulk transfer ends with a packet shorter than the largest, so every IN
