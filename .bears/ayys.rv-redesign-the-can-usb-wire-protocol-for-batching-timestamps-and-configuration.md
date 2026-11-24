@@ -1,13 +1,14 @@
 ---
 id: ayys.rv
 title: Redesign the CAN/USB wire protocol for batching, timestamps and configuration
-status: open
+status: done
 priority: P1
 created: "2026-11-24T17:14:21.334397364Z"
-updated: "2026-11-24T17:14:21.334397364Z"
+updated: "2026-11-24T17:42:43.919246825Z"
 tags:
   - crates
   - can-usb
+attempts: 1
 ---
 
 ## Summary

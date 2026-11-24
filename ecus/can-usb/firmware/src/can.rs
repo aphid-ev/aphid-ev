@@ -3,6 +3,7 @@ use can_usb_protocol::{BusError, BusEvent, Frame};
 use defmt::{debug, error, unwrap, warn};
 use embassy_executor::Spawner;
 use embassy_stm32::can::{CanConfigurator, CanRx, CanTx, OperatingMode, filter};
+use embassy_time::Instant;
 
 pub struct CanBus {
     can_config: CanConfigurator<'static>,
@@ -47,12 +48,23 @@ async fn rx_task(mut can_rx: CanRx<'static>, rx_sender: RxSender) {
             Ok(envelope) => {
                 let frame = Frame::from_can(&envelope.frame);
                 debug!("Received frame: {}", frame);
-                rx_sender.send(BusEvent::Frame(frame)).await;
+                rx_sender
+                    .send(BusEvent::Frame {
+                        timestamp_us: timestamp_us(envelope.ts),
+                        frame,
+                    })
+                    .await;
             }
             Err(error) => {
+                let timestamp_us = timestamp_us(Instant::now());
                 let error = bus_error(error);
                 error!("CAN read error: {}", error);
-                rx_sender.send(BusEvent::BusError(error)).await;
+                rx_sender
+                    .send(BusEvent::BusError {
+                        timestamp_us,
+                        error,
+                    })
+                    .await;
             }
         }
     }
@@ -80,6 +92,13 @@ async fn tx_task(mut can_tx: CanTx<'static>, tx_receiver: TxReceiver) {
             None => error!("Refusing to send unrepresentable frame: {}", frame),
         }
     }
+}
+
+/// The protocol's timestamp: the embassy clock in microseconds, wrapping at
+/// 2^32. The driver stamps each received frame from the FDCAN timestamp
+/// counter, converted to embassy time. With the 1 MHz tick it resolves 1 us.
+fn timestamp_us(instant: Instant) -> u32 {
+    instant.as_micros() as u32
 }
 
 /// The orphan rule keeps this mapping out of `can-usb-protocol`, which

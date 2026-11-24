@@ -115,7 +115,6 @@ dependencies = [
  "can-usb-protocol",
  "clap",
  "nusb",
- "postcard",
  "thiserror",
  "tokio",
 ]

@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 defmt = { version = "1.2.0", optional = true }
 embedded-can = "0.4.1"
+postcard = { version = "1.2.0", default-features = false }
 serde = { version = "1.0.229", features = ["derive"], default-features = false }
 
 [dev-dependencies]

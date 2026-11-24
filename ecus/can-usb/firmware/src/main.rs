@@ -5,18 +5,16 @@ mod can;
 mod usb;
 
 use can::CanBus;
-use can_usb_protocol::{BusEvent, Frame};
+use can_usb_protocol::{BusEvent, FirmwareVersion, Frame};
 use defmt::{debug, info};
 use embassy_executor::Spawner;
 use embassy_stm32::can::{CanConfigurator, IT0InterruptHandler, IT1InterruptHandler};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::usb::{Driver, InterruptHandler};
 use embassy_stm32::{Config, bind_interrupts, peripherals::*};
-use embassy_sync::priority_channel::PriorityChannel;
-use embassy_sync::{
-    blocking_mutex::raw::ThreadModeRawMutex,
-    priority_channel::{self, Min},
-};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::channel::{self, Channel};
+use embassy_sync::priority_channel::{self, Min, PriorityChannel};
 use embassy_time::Timer;
 use usb::UsbDevice;
 use {defmt_rtt as _, panic_probe as _};
@@ -30,14 +28,18 @@ bind_interrupts!(struct CanIrqs {
     FDCAN1_IT1 => IT1InterruptHandler<FDCAN1>;
 });
 
-// Define the synchronization channels between the CAN and USB tasks as 'static
+/// The firmware version from `Cargo.toml`, for the device info.
+const FIRMWARE_VERSION: FirmwareVersion = match FirmwareVersion::parse(env!("CARGO_PKG_VERSION")) {
+    Some(version) => version,
+    None => panic!("CARGO_PKG_VERSION is not major.minor.patch"),
+};
+
+// Define the synchronization channels between the CAN and USB tasks as 'static.
+// Bus events keep the order they happened in.
 const RX_CHANNEL_SIZE: usize = 4;
-pub type RxChannel =
-    priority_channel::PriorityChannel<ThreadModeRawMutex, BusEvent, Min, RX_CHANNEL_SIZE>;
-pub type RxSender =
-    priority_channel::Sender<'static, ThreadModeRawMutex, BusEvent, Min, RX_CHANNEL_SIZE>;
-pub type RxReceiver =
-    priority_channel::Receiver<'static, ThreadModeRawMutex, BusEvent, Min, RX_CHANNEL_SIZE>;
+pub type RxChannel = Channel<ThreadModeRawMutex, BusEvent, RX_CHANNEL_SIZE>;
+pub type RxSender = channel::Sender<'static, ThreadModeRawMutex, BusEvent, RX_CHANNEL_SIZE>;
+pub type RxReceiver = channel::Receiver<'static, ThreadModeRawMutex, BusEvent, RX_CHANNEL_SIZE>;
 
 const TX_CHANNEL_SIZE: usize = 4;
 pub type TxChannel =
@@ -47,7 +49,7 @@ pub type TxSender =
 pub type TxReceiver =
     priority_channel::Receiver<'static, ThreadModeRawMutex, Frame, Min, TX_CHANNEL_SIZE>;
 
-static RX_CHANNEL: RxChannel = PriorityChannel::new();
+static RX_CHANNEL: RxChannel = Channel::new();
 static TX_CHANNEL: TxChannel = PriorityChannel::new();
 
 #[embassy_executor::main]
@@ -79,7 +81,7 @@ async fn main(spawner: Spawner) {
     }
     let p = embassy_stm32::init(config);
 
-    info!("Starting...");
+    info!("can-usb firmware {} starting", FIRMWARE_VERSION);
 
     let usb_driver = Driver::new(p.USB, UsbIrqs, p.PA12, p.PA11);
     let can_driver = CanConfigurator::new(p.FDCAN1, p.PB8, p.PB9, CanIrqs);

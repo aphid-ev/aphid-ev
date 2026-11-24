@@ -137,7 +137,7 @@ impl PartialOrd for FrameId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Frame {
     id: FrameId,
-    dlc: usize,
+    dlc: u8,
     data: [u8; 8],
 }
 
@@ -203,7 +203,7 @@ impl<'de> Visitor<'de> for FrameVisitor {
 /// carry is rejected as it is read, so a peer cannot make us reserve for it.
 struct Payload {
     data: [u8; Frame::MAX_DATA_LEN],
-    len: usize,
+    len: u8,
 }
 
 impl<'de> Deserialize<'de> for Payload {
@@ -232,15 +232,18 @@ impl<'de> Visitor<'de> for PayloadVisitor {
         let mut len = 0;
 
         while let Some(byte) = seq.next_element::<u8>()? {
-            if len == Frame::MAX_DATA_LEN {
+            let Some(slot) = data.get_mut(len) else {
                 return Err(de::Error::custom(FrameError::TooMuchData));
-            }
+            };
 
-            data[len] = byte;
+            *slot = byte;
             len += 1;
         }
 
-        Ok(Payload { data, len })
+        Ok(Payload {
+            data,
+            len: len as u8,
+        })
     }
 }
 
@@ -257,14 +260,13 @@ impl Frame {
             return Err(FrameError::TooMuchData);
         }
 
-        let dlc = data.len();
         let mut inner_data = [0u8; Self::MAX_DATA_LEN];
 
-        inner_data[..dlc].copy_from_slice(data);
+        inner_data[..data.len()].copy_from_slice(data);
 
         Ok(Self {
             id,
-            dlc,
+            dlc: data.len() as u8,
             data: inner_data,
         })
     }
@@ -274,12 +276,12 @@ impl Frame {
     }
 
     pub fn data(&self) -> &[u8] {
-        &self.data[..self.dlc]
+        &self.data[..self.dlc as usize]
     }
 }
 
-/// Ordered by CAN identifier only, so the priority channels drain lower
-/// (higher priority) identifiers first. Deliberately inconsistent with `Eq`,
+/// Ordered by CAN identifier only, so the firmware's transmit priority
+/// channel drains lower (higher priority) identifiers first. Deliberately inconsistent with `Eq`,
 /// which also compares the payload.
 impl Ord for Frame {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -306,7 +308,7 @@ impl Frame {
 
         Self {
             id: frame.id().into(),
-            dlc,
+            dlc: dlc as u8,
             data,
         }
     }
@@ -514,7 +516,7 @@ mod tests {
         let a = Frame::new(0x123u16, &[1]).unwrap();
         let b = Frame::new(0x123u16, &[2]).unwrap();
 
-        // Deliberate: the priority channels order by identifier only, so
+        // Deliberate: the transmit priority channel orders by identifier only, so
         // these tie for ordering while remaining unequal.
         assert_eq!(a.cmp(&b), Ordering::Equal);
         assert_ne!(a, b);

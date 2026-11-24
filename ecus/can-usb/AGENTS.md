@@ -2,14 +2,16 @@
 
 In addition to `ecus/AGENTS.md`.
 
-- The USB wire format is `crates/can-usb-protocol`. The firmware and the host
-  library are installed separately, so a change there is breaking: update
-  both sides in the same commit and the pinned-bytes tests only on purpose.
-- The firmware decodes each bulk transfer with `postcard::take_from_bytes`
-  in a loop, because one transfer may carry several frames. `from_bytes`
-  would drop everything after the first.
-- Bulk OUT `0x01` and bulk IN `0x82`, and VID/PID `0xc0de:0xf055`, are fixed:
-  the host opens them by value.
+- The USB protocol is `crates/can-usb-protocol`: the VID/PID, endpoints,
+  packet size, control request codes, `PROTOCOL_VERSION` and every type on
+  the wire. Never write one of these values as a literal in the firmware or
+  the host library. The firmware and the host library are installed
+  separately, so a change there is breaking: update both sides in the same
+  commit, raise `PROTOCOL_VERSION`, and change the pinned-bytes tests only on
+  purpose.
+- Build and read bulk packets with the crate's `Packer` and `unpack`. A
+  packet holds several values back to back, so `postcard::from_bytes` would
+  drop everything after the first.
 - Never change `DEVICE_INTERFACE_GUID` in `firmware/src/usb.rs`. Windows
   caches the WinUSB binding against it.
 - This unit runs from `0x08000000` with no CAN bootloader; it is reachable
