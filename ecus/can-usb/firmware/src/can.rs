@@ -301,14 +301,21 @@ async fn receive(
                     frame,
                 }
             }
+            // The driver reads the last error code whenever its FIFO is
+            // empty, which on every tick is before supervise() does. So
+            // its errors go through the same filter as the status's.
             Err(error) => {
-                let timestamp_us = timestamp_us(Instant::now());
-                leds::ERR.trigger();
                 let error = bus_error(error);
-                error!("CAN read error: {}", error);
-                BusEvent::BusError {
-                    timestamp_us,
-                    error,
+                match monitor.error(timestamp_us(Instant::now()), error) {
+                    Some(event) => {
+                        leds::ERR.trigger();
+                        error!("CAN read error: {}", error);
+                        event
+                    }
+                    None => {
+                        trace!("Ignored {} during bus-off recovery", error);
+                        continue;
+                    }
                 }
             }
         };
