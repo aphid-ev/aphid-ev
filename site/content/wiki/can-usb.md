@@ -58,10 +58,11 @@ The interface has four LEDs:
 | Power | | The 3.3 V rail is up. Not under firmware control |
 | RX | Green | For 20 ms after each received frame |
 | TX | Green | For 20 ms after each frame handed to the transmit mailbox |
-| ERR | Red | For 500 ms after each bus error |
+| ERR | Red | While the controller is error passive or bus-off, and for 500 ms after each bus error |
 
 Each new frame or error restarts the time of its LED, so RX and TX stay lit
-on a busy bus.
+on a busy bus. When the controller is error active again, ERR goes out
+500 ms later.
 
 The interface has no bus termination. The ECUs at the ends of the bus
 terminate it, so the interface can be plugged in anywhere along it.
@@ -127,6 +128,41 @@ overrun count, and the host library sends start bus when it opens the
 interface. A program that opens it later starts with an empty queue, except
 for at most one packet of up to three old events that the firmware had
 already handed to the USB controller.
+
+## Bus state and bus-off {#bus-state}
+
+While the bus runs, the firmware reads FDCAN1's fault confinement state,
+its error counters and its last error code every 10 ms. It sends a bus
+state event each time the state changes between error active, error
+passive and bus-off, and one right after each start of the bus, so the
+computer always knows the current state. A change of the counters alone
+sends nothing. In listen-only mode the controller never transmits, so only
+the receive counter rises: it can turn error passive but never goes
+bus-off.
+
+A state event that finds the queue full is sent again 10 ms later, with the
+counters of that moment, until it fits. If the state changed in the
+meantime, only the latest one is sent. State events go through the same
+overrun counting as frames, so one never lands ahead of an overrun that
+happened before it.
+
+The embassy driver would take FDCAN1 out of bus-off at once. The firmware
+turns that off. 100 ms after the firmware first sees
+bus-off, it takes the controller out of init with its configuration
+unchanged. The controller then waits for 128 sequences of 11 recessive
+bits, about 2.8 ms at 500 kbit/s, and becomes error active, which sends the
+next state event. If it is still bus-off 100 ms after a recovery started,
+the firmware starts another. A shorted bus therefore goes bus-off and
+recovers over and over, one bus-off and one error-active event per round.
+A stop, start or set config request while the firmware waits ends the
+wait, and the bus starts again or stays stopped as the request says. The
+recovery does not clear the queues, so events already queued for the
+computer stay queued.
+
+During the recovery the controller reports a bit error for every 11
+recessive bits it counts. The firmware does not pass those on as bus
+errors. Reading the last error code clears it in the controller, so each
+error reaches the computer once.
 
 The firmware does not see FDCAN1's own receive FIFO overflow, because
 embassy-stm32 0.6 does not expose the controller's message-lost flag.
@@ -285,10 +321,10 @@ out of the FDCAN receive FIFO. The stamp lags the frame's arrival on the
 bus by however long the frame waited in that FIFO. The embassy driver
 tries to correct for the wait with the FDCAN timestamp counter, but it
 converts the counter's bit times as time quanta, so the correction is
-about a thousand times too small. A bus error is stamped when the
-firmware reads it, and an overrun carries the stamp of the first frame it
-counts. The interface sends frames, bus errors and overruns. The protocol
-defines bus state events, but the firmware does not send them yet.
+about a thousand times too small. A bus error or a bus state is stamped
+when the firmware reads it, and an overrun carries the stamp of the first
+frame it counts. See [bus state and bus-off](#bus-state) for when the
+interface sends a state event.
 
 ## Control requests {#control-requests}
 

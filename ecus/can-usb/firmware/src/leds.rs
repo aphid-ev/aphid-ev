@@ -4,7 +4,12 @@
 //! signals the LED's own task and returns. That task lights the LED and
 //! keeps it lit until no trigger has come for the pulse length, so at full
 //! bus load the LED stays on and the CAN tasks never write a GPIO.
+//!
+//! [`Pulse::hold`] keeps an LED lit until it is released, whatever the
+//! triggers do. The CAN task holds ERR while the controller is error passive
+//! or bus-off.
 
+use core::sync::atomic::{AtomicBool, Ordering};
 use defmt::unwrap;
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either, select};
@@ -24,24 +29,35 @@ const ERR_PULSE: Duration = Duration::from_millis(500);
 pub static RX: Pulse = Pulse::new();
 /// Handed a frame to the transmit mailbox.
 pub static TX: Pulse = Pulse::new();
-/// Saw a bus error.
+/// Saw a bus error, held while error passive or bus-off.
 pub static ERR: Pulse = Pulse::new();
 
 /// The trigger of one LED.
 pub struct Pulse {
     signal: Signal<CriticalSectionRawMutex, ()>,
+    held: AtomicBool,
 }
 
 impl Pulse {
     const fn new() -> Self {
         Self {
             signal: Signal::new(),
+            held: AtomicBool::new(false),
         }
     }
 
     /// Lights the LED, or keeps it lit, for one more pulse length.
     pub fn trigger(&self) {
         self.signal.signal(());
+    }
+
+    /// Keeps the LED lit while `held`. When released, it goes out one pulse
+    /// length after the release or the last trigger. Signals the LED's task
+    /// only when the hold changes, so it can be called on every status.
+    pub fn hold(&self, held: bool) {
+        if self.held.swap(held, Ordering::Relaxed) != held {
+            self.signal.signal(());
+        }
     }
 }
 
@@ -58,8 +74,16 @@ async fn pulse_task(mut led: Output<'static>, pulse: &'static Pulse, length: Dur
     loop {
         pulse.signal.wait().await;
         led.set_high();
-        // Every trigger during the pulse restarts it.
-        while let Either::Second(()) = select(Timer::after(length), pulse.signal.wait()).await {}
+        loop {
+            if pulse.held.load(Ordering::Relaxed) {
+                pulse.signal.wait().await;
+                continue;
+            }
+            // Every trigger or hold during the pulse restarts it.
+            if let Either::First(()) = select(Timer::after(length), pulse.signal.wait()).await {
+                break;
+            }
+        }
         led.set_low();
     }
 }

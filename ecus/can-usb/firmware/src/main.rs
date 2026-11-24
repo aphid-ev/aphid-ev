@@ -3,6 +3,7 @@
 
 mod board;
 mod can;
+mod fdcan;
 mod leds;
 mod usb;
 
