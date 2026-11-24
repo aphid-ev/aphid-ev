@@ -92,17 +92,43 @@ After this, the ROM bootloader starts only while main flash is blank.
 
 # CAN side
 
-The interface runs FDCAN1 as classic CAN at 500 kbit/s. Its filter accepts
-every frame with a standard identifier. It reports bus errors to the
+The interface runs FDCAN1 as classic CAN at 500 kbit/s. Its filters pass
+every standard and every extended identifier. The controller rejects remote
+frames, so the interface does not forward them. A frame on the wire has no
+remote flag. The interface reports bus errors to the
 computer as they happen.
 
-Two queues of four entries connect the CAN and USB tasks, one in each
-direction. Received frames and bus errors go to the computer in the order
-they happened. Frames from the computer pass through a priority queue that
-sends the lowest identifier first, which is the order of CAN arbitration.
-When the transmit mailbox is full, the embassy CAN driver drops the queued
-frame with the lowest priority to make room. The firmware logs each dropped
-frame over defmt.
+Two FIFO queues connect the CAN and USB tasks, one in each direction, so
+nothing is reordered. Received frames and bus errors reach the computer in
+the order they happened, and frames from the computer go on the bus in the
+order it sent them.
+
+The receive queue holds 128 events. That is 28 ms of a saturated bus of
+8-byte frames, or 13 ms of empty ones. The receive task never waits for
+room in it, because FDCAN1's own receive FIFO holds only three frames and
+would overflow while it waited. The receive task counts each frame that
+does not fit instead. As
+soon as there is room again, the interface sends one overrun event with the
+count, in the place where the frames went missing, and starts counting from
+zero. If the computer stops reading for a while, the first event it gets
+after it resumes is that overrun. While no program has the interface open,
+the firmware discards events at the USB end instead, so they are neither
+queued nor counted.
+
+The firmware does not see FDCAN1's own receive FIFO overflow, because
+embassy-stm32 0.6 does not expose the controller's message-lost flag. Frames lost there
+are not counted.
+
+The transmit queue holds 64 frames, three full USB packets of the shortest
+frames. FDCAN1's three transmit buffers work as a FIFO too, and no queued
+frame is ever dropped to make room. When the buffers and the queue are
+full, the interface stops reading the bulk OUT endpoint, and the endpoint
+answers the computer's next packets with NAK until there is room. On a bus where no other node acknowledges, the
+controller retries the frame without end, so a send from the computer can
+wait forever.
+
+Per-frame log lines over defmt are at `trace` level. The firmware builds
+with `DEFMT_LOG=info` by default, so they are not compiled in.
 
 # USB protocol {#usb-protocol}
 
@@ -192,9 +218,9 @@ bus by however long the frame waited in that FIFO. The embassy driver
 tries to correct for the wait with the FDCAN timestamp counter, but it
 converts the counter's bit times as time quanta, so the correction is
 about a thousand times too small. A bus error is stamped when the
-firmware reads it. The interface sends frames and bus
-errors. The protocol defines bus state and overrun events, but the firmware
-does not send them yet.
+firmware reads it, and an overrun carries the stamp of the first frame it
+counts. The interface sends frames, bus errors and overruns. The protocol
+defines bus state events, but the firmware does not send them yet.
 
 ## Control requests {#control-requests}
 
