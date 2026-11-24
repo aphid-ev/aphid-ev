@@ -467,10 +467,15 @@ with its time as a 64-bit count of microseconds that does not wrap.
 `receive()` and `try_receive()` return the event alone, with only its
 32-bit timestamp. The crate's `TimestampUnwrapper` computes the time. It
 gets every event in the order it arrived, whichever call returns it.
-Events come in the order they happened, so a timestamp smaller than the
-one before it means the interface's clock wrapped in between, and the
-unwrapper adds 2³² µs from there on. The first event keeps its 32-bit
-value.
+The first event keeps its 32-bit value. Each later one is placed by the
+difference to the latest timestamp, read as signed:
+
+- Less than 2³¹ µs (35.8 minutes) forward is time going on. If the
+  timestamp wrapped on the way, the unwrapper adds 2³² µs from there on.
+- Anything else is a step back, and the event gets the earlier time. The
+  firmware stamps a bus error or a bus state when it reads it, but corrects
+  a frame's stamp back towards the frame's arrival on the bus. A frame
+  queued right after a state event can therefore carry a smaller stamp.
 
 - Set config and start bus do not restart the interface's clock, so the
   time runs on across `set_config()` and `start()`.
@@ -479,9 +484,9 @@ value.
 - The interface's clock restarts at 0 when it powers up. A power cycle
   ends the USB connection, so the program sees a disconnect and has to open
   the interface again, which starts the time over.
-- The unwrapper sees a wrap only through the events on each side of it.
-  If the bus is quiet for 2³² µs or longer, the two events around the gap
-  come out a whole number of 71.6-minute periods too close together.
+- If the bus is quiet for 2³¹ µs or longer, the unwrapper takes the gap
+  for a step back. The events after it come out one or more whole periods
+  of 71.6 minutes too early.
 
 The manager flushes after each frame it sends, so its bootloader traffic
 goes out one frame per packet.

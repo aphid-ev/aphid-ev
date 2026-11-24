@@ -45,5 +45,5 @@ pub use controller::{BusCommand, Controller, Rejection};
 pub use frame::*;
 pub use overrun::{Forwarded, OverrunCounter};
 pub use packet::{PackError, Packer, UnpackError, Unpacker, unpack};
-pub use timestamp::{TIMESTAMP_PERIOD_US, TimestampUnwrapper};
+pub use timestamp::{TIMESTAMP_MAX_GAP_US, TIMESTAMP_PERIOD_US, TimestampUnwrapper};
 pub use usb::*;
