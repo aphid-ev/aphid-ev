@@ -5,20 +5,27 @@
 //! command says, and starts the bus again with the command's config if it
 //! is to run. While the bus runs, receiving and transmitting are two loops
 //! in this task, and a new command ends both.
+//!
+//! The receive loop also reads the controller's status every 10 ms and
+//! hands it to a [`BusMonitor`], which reports the bus state to the host and
+//! says when to recover from bus-off. A command ends a recovery that is
+//! still waiting, and every start of the bus reports the state again.
 
 use crate::board::{CanPeripherals, Transceiver};
-use crate::{ClearSignal, CommandSignal, EventSender, FrameReceiver, leds};
+use crate::{ClearSignal, CommandSignal, EventSender, FrameReceiver, fdcan, leds};
+use can_usb_protocol::bus_monitor::POLL_INTERVAL_US;
 use can_usb_protocol::{
-    Bitrate, BusCommand, BusError, BusEvent, Config, Forwarded, Frame, Mode, OverrunCounter,
+    Bitrate, BusCommand, BusError, BusEvent, BusMonitor, Config, Forwarded, Frame, Mode,
+    OverrunCounter,
 };
 use core::convert::Infallible;
 use core::future::{pending, poll_fn};
 use defmt::{debug, error, info, trace, unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either, Either3, select, select3};
+use embassy_futures::select::{Either3, select3};
 use embassy_stm32::can::config::{GlobalFilter, NonMatchingFilter, TxBufferMode};
 use embassy_stm32::can::{CanConfigurator, CanRx, CanTx, OperatingMode, filter};
-use embassy_time::Instant;
+use embassy_time::{Duration, Instant, Ticker};
 use embedded_can::Frame as _;
 
 pub struct CanBus {
@@ -124,6 +131,8 @@ impl CanBus {
         self.transceiver.standby();
         drop(can_tx);
         drop(can_rx);
+        // A stopped bus has no state.
+        leds::ERR.hold(false);
 
         discarded += u32::from(in_flight.is_some());
         if discarded > 0 {
@@ -208,10 +217,15 @@ fn configure(can: &mut CanConfigurator<'_>, bitrate: Bitrate) {
     // The TX buffers send in the order they were written. In this mode the
     // driver's write() waits for a free buffer instead of evicting a queued
     // frame of lower priority.
+    //
+    // The driver would leave bus-off as soon as it entered it. The
+    // BusMonitor waits 100 ms first, and the receive loop starts the
+    // recovery.
     let config = can
         .config()
         .set_global_filter(global_filter)
-        .set_tx_buffer_mode(TxBufferMode::Fifo);
+        .set_tx_buffer_mode(TxBufferMode::Fifo)
+        .set_automatic_bus_off_recovery(false);
     can.set_config(config);
     can.set_bitrate(bitrate.bits_per_second());
 }
@@ -227,34 +241,48 @@ fn operating_mode(mode: Mode) -> OperatingMode {
     }
 }
 
-/// Reads the RX FIFO and queues what it reads for the host.
+/// Reads the RX FIFO and the controller's status, and queues what it reads
+/// for the host.
 ///
 /// It never waits for room in the event queue. FDCAN1's RX FIFO holds three
 /// frames, and while this task waited it would fill and drop frames without
 /// a trace. Events that do not fit are counted by the [`OverrunCounter`]
 /// and reported as one `Overrun` as soon as there is room: ahead of the next
 /// event, or by itself once the USB side takes an event out of the queue.
+/// A state event that does not fit is offered again with the next status.
 async fn receive(
     can_rx: &mut CanRx<'_>,
     event_sender: EventSender,
     overrun: &mut OverrunCounter,
 ) -> Infallible {
+    let mut monitor = BusMonitor::new();
+    let mut ticker = Ticker::every(Duration::from_micros(POLL_INTERVAL_US.into()));
+    // The first status goes out as soon as the bus runs.
+    supervise(&mut monitor, event_sender, overrun);
+
     loop {
-        let read = if overrun.is_pending() {
-            let room = poll_fn(|cx| event_sender.poll_ready_to_send(cx));
-            // read() is cancel-safe: it takes a frame out of the FIFO only
-            // in the poll that returns it.
-            match select(can_rx.read(), room).await {
-                Either::First(read) => read,
-                Either::Second(()) => {
-                    if overrun.flush(|event| event_sender.try_send(event)) {
-                        debug!("Overrun reported");
-                    }
-                    continue;
-                }
+        let overrun_pending = overrun.is_pending();
+        let room = async {
+            if overrun_pending {
+                poll_fn(|cx| event_sender.poll_ready_to_send(cx)).await
+            } else {
+                pending::<()>().await
             }
-        } else {
-            can_rx.read().await
+        };
+        // read() is cancel-safe: it takes a frame out of the FIFO only in
+        // the poll that returns it.
+        let read = match select3(can_rx.read(), room, ticker.next()).await {
+            Either3::First(read) => read,
+            Either3::Second(()) => {
+                if overrun.flush(|event| event_sender.try_send(event)) {
+                    debug!("Overrun reported");
+                }
+                continue;
+            }
+            Either3::Third(()) => {
+                supervise(&mut monitor, event_sender, overrun);
+                continue;
+            }
         };
 
         let event = match read {
@@ -285,17 +313,48 @@ async fn receive(
             }
         };
 
-        let was_pending = overrun.is_pending();
-        if overrun.forward(event, |event| event_sender.try_send(event)) == Forwarded::Lost {
-            match event {
-                BusEvent::Frame { .. } if !was_pending => {
-                    warn!("Event queue full, counting lost frames")
-                }
-                BusEvent::Frame { .. } => trace!("Event queue full, lost {}", event),
-                _ => warn!("Event queue full, lost {}", event),
+        forward(event, event_sender, overrun);
+    }
+}
+
+/// Reads the controller's status, queues the error and state events the
+/// monitor makes of it, sets the ERR LED and starts a bus-off recovery when
+/// the monitor says so.
+fn supervise(monitor: &mut BusMonitor, event_sender: EventSender, overrun: &mut OverrunCounter) {
+    let update = monitor.update(timestamp_us(Instant::now()), fdcan::status());
+
+    if let Some(event) = update.error {
+        leds::ERR.trigger();
+        error!("CAN error: {}", event);
+        forward(event, event_sender, overrun);
+    }
+    if let Some(event) = update.state
+        && forward(event, event_sender, overrun) == Forwarded::Queued
+    {
+        info!("Bus state: {}", event);
+        monitor.queued(event);
+    }
+    leds::ERR.hold(monitor.err_led_steady());
+    if update.recover {
+        info!("Recovering from bus-off");
+        fdcan::recover();
+    }
+}
+
+/// Queues `event` through the overrun counter and logs what is lost.
+fn forward(event: BusEvent, event_sender: EventSender, overrun: &mut OverrunCounter) -> Forwarded {
+    let was_pending = overrun.is_pending();
+    let forwarded = overrun.forward(event, |event| event_sender.try_send(event));
+    if forwarded == Forwarded::Lost {
+        match event {
+            BusEvent::Frame { .. } if !was_pending => {
+                warn!("Event queue full, counting lost frames")
             }
+            BusEvent::Frame { .. } => trace!("Event queue full, lost {}", event),
+            _ => warn!("Event queue full, lost {}", event),
         }
     }
+    forwarded
 }
 
 /// Queues an overrun left pending when the bus stopped, once the USB side

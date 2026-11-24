@@ -1,14 +1,15 @@
 ---
 id: ayys.sz
 title: Report bus state and recover from bus-off on the CAN/USB interface
-status: open
+status: done
 priority: P2
 created: "2026-11-24T17:15:40.457514666Z"
-updated: "2026-11-24T17:15:40.457514666Z"
+updated: "2026-11-24T18:43:29.465626545Z"
 tags:
   - can-usb
 depends_on:
   - ayys.cv
+attempts: 1
 ---
 
 ## Summary

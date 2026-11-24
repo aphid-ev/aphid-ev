@@ -10,6 +10,7 @@ embassy-stm32 = { version = "0.6.0", features = [
     "stm32g431cb",
     "memory-x",
     "exti",
+    "unstable-pac",
 ] }
 embassy-sync = { version = "0.8.0", features = ["defmt"] }
 embassy-executor = { version = "0.10.0", features = [
