@@ -1,15 +1,16 @@
 ---
 id: ayys.da
 title: Stream frames through the CAN/USB host library with transfers in flight and a fake device for tests
-status: open
+status: done
 priority: P2
 created: "2026-11-24T17:16:03.067232974Z"
-updated: "2026-11-24T17:16:03.067232974Z"
+updated: "2026-11-24T18:47:38.518441693Z"
 tags:
   - can-usb
 depends_on:
   - ayys.gu
   - ayys.cv
+attempts: 1
 ---
 
 ## Summary
