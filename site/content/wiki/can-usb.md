@@ -414,11 +414,11 @@ behind. `open_with_config()` sets another one. Either way the program
 begins with an empty receive queue. The library has calls for each
 request: `device_info()`, `set_config()`, `start()` and `stop()`.
 
-The library keeps eight 64-byte reads queued on bulk IN. The computer's
-USB controller can then collect a packet in every USB frame while the
-program is still handling the ones before it. The library unpacks each
-packet into a queue that `receive()` reads from. It holds at most 1024
-events. When the queue is full, the library stops collecting packets, so
+The library keeps `IN_TRANSFERS` reads of one packet each queued on bulk
+IN. The computer's USB controller can then collect a packet in every USB
+frame while the program is still handling the ones before it. The library
+unpacks each packet into a queue that `receive()` reads from. The queue
+holds at most `EVENT_QUEUE_LIMIT` events. When the queue is full, the library stops collecting packets, so
 the interface's own queue fills, and the interface reports the frames it
 loses with an overrun event. The library itself never drops an event. A
 packet with a corrupt tail gives its whole events first, then an error,
@@ -427,14 +427,16 @@ then the events of the next packet.
 `send()` adds a frame to the OUT packet being filled. The packet goes out
 when the next frame does not fit, at `flush()`, and when the program waits
 in `receive()`. A program that sends a request and waits for the answer
-needs no flush. `send_all()` sends a batch. Up to four OUT packets are in
-flight. When the interface's transmit queue is full it NAKs, the four
-packets stay in flight, and `send()` waits for room. On a bus where no node
+needs no flush. `send_all()` sends a batch. Up to `OUT_TRANSFERS` OUT
+packets are in flight. When the interface's transmit queue is full it
+NAKs, the packets in flight stay there, and `send()` waits for room. On a bus where no node
 acknowledges, it waits until the program stops the bus, so programs bound
 it with a timeout. If an OUT transfer fails, the next `send()` or `flush()`
 returns the error with the number of frames lost, and does not take its
 own frame. After an unplug, `receive()` returns the events already
 received, then one disconnect error, and every later call returns it too.
+
+The three limits are constants in `ecus/can-usb/host/src/device.rs`.
 
 `set_config()` and `start()` discard what came before on both sides. The
 library cancels its OUT transfers and waits until each one has finished,
@@ -463,7 +465,7 @@ The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 | `can-usb info` | Prints the protocol version, the firmware version and the serial number |
 | `can-usb listen` | Prints every frame and bus error with its timestamp |
 | `can-usb ping` | Sends a frame every 5 seconds and prints the next event |
-| `can-usb throughput` | Sends 10000 frames as fast as the interface takes them and prints what came back |
+| `can-usb throughput` | Sends frames as fast as the interface takes them and prints what came back |
 
 Every command first sets the config from two options:
 
@@ -480,8 +482,8 @@ kept free for bus tests just below the identifiers of the
 
 ## Throughput
 
-`can-usb throughput` sends 10000 frames, or as many as `--count` (`-n`)
-says. Each is a standard 8-byte frame with a sequence number in its first
+`can-usb throughput` sends as many frames as `--count` (`-n`) says.
+`can-usb throughput --help` shows the default. Each is a standard 8-byte frame with a sequence number in its first
 four bytes. Between sends it collects whatever events have arrived, and
 after the last one it waits until every frame has come back or nothing has
 arrived for a second. If the interface takes no frame for a second, for
