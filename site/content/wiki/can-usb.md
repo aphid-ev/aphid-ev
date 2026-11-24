@@ -156,9 +156,13 @@ The largest event, an extended frame with eight bytes, takes 20 bytes, so
 three fit in a packet.
 
 The firmware runs embassy's clock at 1 MHz, so timestamps resolve one
-microsecond. A received frame is stamped from the FDCAN timestamp counter,
-which the embassy driver converts to the embassy clock. A bus error is
-stamped when the firmware reads it. The interface sends frames and bus
+microsecond. The firmware stamps a received frame when it reads the frame
+out of the FDCAN receive FIFO. The stamp lags the frame's arrival on the
+bus by however long the frame waited in that FIFO. The embassy driver
+tries to correct for the wait with the FDCAN timestamp counter, but it
+converts the counter's bit times as time quanta, so the correction is
+about a thousand times too small. A bus error is stamped when the
+firmware reads it. The interface sends frames and bus
 errors. The protocol defines bus state and overrun events, but the firmware
 does not send them yet.
 

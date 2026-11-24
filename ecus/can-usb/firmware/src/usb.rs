@@ -1,7 +1,7 @@
 use crate::{RxReceiver, TxSender};
 use can_usb_protocol::{
-    BULK_IN_EP, BULK_OUT_EP, Frame, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID, Packer,
-    VENDOR_ID, unpack,
+    BULK_IN_EP, BULK_OUT_EP, Frame, INTERFACE, MAX_PACKET_SIZE, MSOS_VENDOR_CODE, PRODUCT_ID,
+    Packer, VENDOR_ID, unpack,
 };
 use defmt::{error, info, unwrap, warn};
 use embassy_executor::Spawner;
@@ -80,6 +80,10 @@ impl UsbDevice {
             msos::PropertyData::RegMultiSz(&[DEVICE_INTERFACE_GUID]),
         ));
         let mut interface = function.interface();
+        // The host claims the interface by this number. embassy numbers
+        // interfaces in the order they are created, so this one is 0 only
+        // while it is the first.
+        defmt::assert_eq!(interface.interface_number().0, INTERFACE);
         let mut alt = interface.alt_setting(0xFF, 0, 0, None);
         let read_ep = alt.endpoint_bulk_out(
             Some(EndpointAddress::from(BULK_OUT_EP)),
