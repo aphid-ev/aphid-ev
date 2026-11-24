@@ -124,8 +124,8 @@ the number of events discarded when the computer takes packets again.
 Linux, Windows and macOS configure the device when it is plugged in,
 whether or not a program opens it. From then on the queue fills while no
 program reads. Start bus and set config clear it, together with the
-overrun count, and the host library sends start bus when it opens the
-interface. A program that opens it later starts with an empty queue, except
+overrun count, and the host library sends set config and start bus when
+it opens the interface. A program that opens it later starts with an empty queue, except
 for at most one packet of up to three old events that the firmware had
 already handed to the USB controller.
 
@@ -253,7 +253,9 @@ in bytes that are not a whole value, the receiver keeps the values before
 them and drops the rest of that packet. An empty packet carries nothing.
 
 Bulk OUT carries frames to send on the bus. Bulk IN carries bus events.
-The host library sends one frame per packet.
+An OUT packet can be the full 64 bytes, and the interface sends every frame
+in it. The host library packs frames into OUT packets the same way the
+interface packs events, see [host access](#host-access).
 
 The interface packs as many events into each IN packet as it has queued.
 It waits for one event, adds every other event already in the receive
@@ -402,11 +404,57 @@ nor acknowledges.
   binds the WinUSB driver to it without a driver install.
 - macOS needs no setup.
 
+## Host library
+
 The host library in `ecus/can-usb/host` reads the device info when it
 opens the interface and refuses one with another protocol version. Then it
-sends start bus, so the program begins with an empty receive queue. It has
-calls for each request: `device_info()`, `set_config()`, `start()` and
-`stop()`.
+sends set config and start bus. `open()` sets 500 kbit/s in normal mode,
+so a program never runs with a config that an earlier program left
+behind. `open_with_config()` sets another one. Either way the program
+begins with an empty receive queue. The library has calls for each
+request: `device_info()`, `set_config()`, `start()` and `stop()`.
+
+The library keeps eight 64-byte reads queued on bulk IN. The computer's
+USB controller can then collect a packet in every USB frame while the
+program is still handling the ones before it. The library unpacks each
+packet into a queue that `receive()` reads from. It holds at most 1024
+events. When the queue is full, the library stops collecting packets, so
+the interface's own queue fills, and the interface reports the frames it
+loses with an overrun event. The library itself never drops an event. A
+packet with a corrupt tail gives its whole events first, then an error,
+then the events of the next packet.
+
+`send()` adds a frame to the OUT packet being filled. The packet goes out
+when the next frame does not fit, at `flush()`, and when the program waits
+in `receive()`. A program that sends a request and waits for the answer
+needs no flush. `send_all()` sends a batch. Up to four OUT packets are in
+flight. When the interface's transmit queue is full it NAKs, the four
+packets stay in flight, and `send()` waits for room. On a bus where no node
+acknowledges, it waits until the program stops the bus, so programs bound
+it with a timeout. If an OUT transfer fails, the next `send()` or `flush()`
+returns the error with the number of frames lost, and does not take its
+own frame. After an unplug, `receive()` returns the events already
+received, then one disconnect error, and every later call returns it too.
+
+`set_config()` and `start()` discard what came before on both sides. The
+library cancels its OUT transfers and waits until each one has finished,
+cancels its IN reads and drops what they brought, and then sends the
+request. The interface clears its queues when the request arrives. Two
+things can still cross over:
+
+- One IN packet of old events: the one already in the interface's IN
+  endpoint buffer, which the next read collects.
+- The frames in one OUT packet: a packet the interface's USB peripheral has
+  already taken but the firmware has not read yet. They go on the bus with
+  the new config.
+
+`stop()` does not wait for the OUT transfers, so it also gets a program out
+of a bus where nothing acknowledges.
+
+The manager flushes after each frame it sends, so its bootloader traffic
+goes out one frame per packet.
+
+## Command line tool
 
 The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 
@@ -415,9 +463,9 @@ The `can-usb` command line tool in `ecus/can-usb/host` tests the interface:
 | `can-usb info` | Prints the protocol version, the firmware version and the serial number |
 | `can-usb listen` | Prints every frame and bus error with its timestamp |
 | `can-usb ping` | Sends a frame every 5 seconds and prints the next event |
-| `can-usb throughput` | Sends 1000 frames, waits for an event after each, and prints the rate |
+| `can-usb throughput` | Sends 10000 frames as fast as the interface takes them and prints what came back |
 
-Every command except `info` first sets the config from two options:
+Every command first sets the config from two options:
 
 | Option | Values | Default |
 | --- | --- | --- |
@@ -429,3 +477,30 @@ ECU running the `can-echo` test application. With `--mode loopback` the
 interface answers itself. They send on `0x7cf`, which is
 kept free for bus tests just below the identifiers of the
 [[bootloader|CAN bootloader]]. It is `BUS_TEST_ID` in `crates/boot-protocol`.
+
+## Throughput
+
+`can-usb throughput` sends 10000 frames, or as many as `--count` (`-n`)
+says. Each is a standard 8-byte frame with a sequence number in its first
+four bytes. Between sends it collects whatever events have arrived, and
+after the last one it waits until every frame has come back or nothing has
+arrived for a second. If the interface takes no frame for a second, for
+example because no node acknowledges, it stops sending. It prints:
+
+- how many frames it sent and how fast,
+- how many frames came back, how many the interface reported lost in
+  overrun events, how many bus errors it saw, and how many frames came back
+  out of sequence,
+- the receive rate on the interface's clock, from the first frame back to
+  the last, and the bus load that rate makes at the configured bit rate.
+
+The bus load counts each frame's nominal bits, 111 for a standard 8-byte
+frame including the interframe space, without stuff bits. Stuffing adds up
+to about a fifth more, so a saturated bus can show less than 100 %.
+
+Measured on the bench:
+
+| Setup | Bit rate | Frames/s | Bus load | Overruns |
+| --- | --- | --- | --- | --- |
+| `--mode loopback` | 500 kbit/s | not measured yet | | |
+| Against `can-echo` | 500 kbit/s | not measured yet | | |
