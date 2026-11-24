@@ -14,6 +14,8 @@
 //! - [`BusMonitor`] turns the controller's status into
 //!   [`BusEvent::BusState`] events and decides when to recover from bus-off
 //!   (see [`bus_monitor`]).
+//! - [`TimestampUnwrapper`] turns the events' wrapping 32-bit timestamps
+//!   into a 64-bit time on the host (see [`timestamp`]).
 //!
 //! The firmware and the host are flashed and installed separately, so the
 //! `wire_encoding_is_stable` tests pin the bytes. Change them only to break
@@ -31,6 +33,7 @@ pub mod controller;
 mod frame;
 pub mod overrun;
 pub mod packet;
+pub mod timestamp;
 pub mod usb;
 
 pub use batch::{Batcher, DropLog, DropTracker};
@@ -42,4 +45,5 @@ pub use controller::{BusCommand, Controller, Rejection};
 pub use frame::*;
 pub use overrun::{Forwarded, OverrunCounter};
 pub use packet::{PackError, Packer, UnpackError, Unpacker, unpack};
+pub use timestamp::{TIMESTAMP_PERIOD_US, TimestampUnwrapper};
 pub use usb::*;
