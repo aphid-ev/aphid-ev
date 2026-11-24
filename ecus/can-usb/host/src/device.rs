@@ -82,6 +82,10 @@ impl UsbCanDevice {
                 return Err(error);
             }
 
+            // Every IN packet is shorter than MAX_PACKET_SIZE (see
+            // BULK_IN_PACKET_LIMIT), so it ends its transfer: this read
+            // completes with exactly one packet as soon as the device sends
+            // it, and a larger buffer would not hold more.
             let buffer = self.ep_in.allocate(MAX_PACKET_SIZE);
 
             self.ep_in.submit(buffer);

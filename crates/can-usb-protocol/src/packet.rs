@@ -32,7 +32,16 @@
 //!
 //! assert_eq!(received, frames);
 //! ```
+//!
+//! A sender that drains a queue uses [`Packer::fill`], which stops at the
+//! first value that does not fit and hands it back for the next packet.
+//!
+//! Bulk IN packets are at most [`BULK_IN_PACKET_LIMIT`] bytes, one short of
+//! the endpoint's maximum, so that each one ends its USB transfer. See that
+//! constant for what the host may rely on.
 
+#[cfg(doc)]
+use crate::BULK_IN_PACKET_LIMIT;
 use crate::MAX_PACKET_SIZE;
 use core::{fmt, marker::PhantomData};
 use serde::{Serialize, de::DeserializeOwned};
@@ -109,6 +118,29 @@ impl Packer {
             Err(postcard::Error::SerializeBufferFull) => Err(PackError::Full),
             Err(_) => Err(PackError::Encode),
         }
+    }
+
+    /// Appends values from `values` until one does not fit or `values` ends,
+    /// and returns the one that did not fit, to start the next packet with.
+    ///
+    /// Takes no value from `values` after the one it returns, so nothing is
+    /// lost or reordered when `values` drains a queue. A value that does not
+    /// fit even in an empty packet, or does not encode, is passed to
+    /// `rejected` with the reason and skipped.
+    pub fn fill<T: Serialize>(
+        &mut self,
+        values: impl IntoIterator<Item = T>,
+        mut rejected: impl FnMut(T, PackError),
+    ) -> Option<T> {
+        for value in values {
+            match self.push(&value) {
+                Ok(()) => {}
+                Err(PackError::Full) => return Some(value),
+                Err(error) => rejected(value, error),
+            }
+        }
+
+        None
     }
 
     /// The packet so far, ready to send.
@@ -231,7 +263,8 @@ impl<T: DeserializeOwned> core::iter::FusedIterator for Unpacker<'_, T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BusError, BusEvent, Frame, FrameId};
+    use crate::{BULK_IN_PACKET_LIMIT, BusError, BusEvent, Frame, FrameId};
+    use std::collections::VecDeque;
 
     fn frame(id: u16, len: usize) -> Frame {
         Frame::new(id, &[0xaa; 8][..len]).unwrap()
@@ -372,6 +405,142 @@ mod tests {
             Packer::with_limit(0).push(&BusError::Crc),
             Err(PackError::TooLarge)
         );
+    }
+
+    /// Drains `queue` into packets the way the firmware's write task does:
+    /// a packet starts with the value left over from the last one.
+    fn fill_all(packer: &mut Packer, queue: &mut VecDeque<BusEvent>) -> Vec<Vec<u8>> {
+        let mut packets = Vec::new();
+        let mut carry = None;
+
+        while let Some(first) = carry.take().or_else(|| queue.pop_front()) {
+            packer.clear();
+            let values = core::iter::once(first).chain(core::iter::from_fn(|| queue.pop_front()));
+            carry = packer.fill(values, |_, error| panic!("rejected: {error}"));
+            packets.push(packer.as_bytes().to_vec());
+        }
+
+        packets
+    }
+
+    fn overrun(timestamp_us: u32, lost: u16) -> BusEvent {
+        BusEvent::Overrun { timestamp_us, lost }
+    }
+
+    #[test]
+    fn fill_packs_every_queued_value_that_fits() {
+        let mut queue: VecDeque<_> = (0..3).map(event).collect();
+        let mut packer = Packer::with_limit(BULK_IN_PACKET_LIMIT);
+
+        let carry = packer.fill(core::iter::from_fn(|| queue.pop_front()), |_, _| {
+            panic!("rejected")
+        });
+
+        assert_eq!(carry, None);
+        assert!(queue.is_empty());
+        let received: Vec<BusEvent> = unpack(packer.as_bytes()).map(Result::unwrap).collect();
+        assert_eq!(received, [event(0), event(1), event(2)]);
+    }
+
+    /// The value that opens the next packet is the only one taken from the
+    /// queue beyond what the packet holds.
+    #[test]
+    fn fill_stops_at_the_first_value_that_does_not_fit() {
+        let mut queue: VecDeque<_> = (0..10).map(event).collect();
+        let mut packer = Packer::with_limit(BULK_IN_PACKET_LIMIT);
+
+        let carry = packer.fill(core::iter::from_fn(|| queue.pop_front()), |_, _| {
+            panic!("rejected")
+        });
+
+        // 17 bytes each: three fit in 63.
+        assert_eq!(packer.len(), 51);
+        assert_eq!(carry, Some(event(3)));
+        assert_eq!(queue.front(), Some(&event(4)));
+        assert_eq!(queue.len(), 6);
+    }
+
+    #[test]
+    fn fill_with_nothing_queued_leaves_the_packet_empty() {
+        let mut packer = Packer::new();
+
+        assert_eq!(
+            packer.fill(core::iter::empty::<BusEvent>(), |_, _| panic!("rejected")),
+            None
+        );
+        assert!(packer.is_empty());
+    }
+
+    /// A value too large for any packet is handed back while the packet
+    /// has values in it, like any value that does not fit. Opening the next
+    /// packet with it rejects it there, and the values after it still go.
+    #[test]
+    fn fill_skips_a_value_that_can_never_fit() {
+        let big = [0u8; 64];
+        let small = [1u8; 2];
+        let mut packer = Packer::new();
+        let mut rejected = Vec::new();
+
+        let carry = packer.fill([small.as_slice(), big.as_slice()], |value, error| {
+            rejected.push((value.len(), error))
+        });
+        assert_eq!(carry, Some(big.as_slice()));
+        assert_eq!(packer.as_bytes(), [2, 1, 1]);
+
+        packer.clear();
+        let carry = packer.fill([big.as_slice(), small.as_slice()], |value, error| {
+            rejected.push((value.len(), error))
+        });
+        assert_eq!(carry, None);
+        assert_eq!(rejected, [(64, PackError::TooLarge)]);
+        assert_eq!(packer.as_bytes(), [2, 1, 1]);
+    }
+
+    /// A burst larger than one packet: full packets, each short of the
+    /// endpoint's maximum, then the rest, with every event in order.
+    #[test]
+    fn a_burst_is_split_into_short_packets_in_order() {
+        let mut events: Vec<_> = (0..40).map(event).collect();
+        events.insert(17, overrun(17, 300));
+        events.push(BusEvent::BusError {
+            timestamp_us: 99,
+            error: BusError::Crc,
+        });
+        let mut queue: VecDeque<_> = events.iter().copied().collect();
+
+        let packets = fill_all(&mut Packer::with_limit(BULK_IN_PACKET_LIMIT), &mut queue);
+
+        assert!(packets.len() > 1);
+        assert!(packets.iter().all(|packet| !packet.is_empty()));
+        assert!(packets.iter().all(|packet| packet.len() < MAX_PACKET_SIZE));
+
+        let received: Vec<BusEvent> = packets
+            .iter()
+            .flat_map(|packet| unpack(packet))
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(received, events);
+    }
+
+    /// Four 16-byte events would fill 64 bytes exactly. The bulk IN limit
+    /// moves the fourth to the next packet, so no packet is full size.
+    #[test]
+    fn the_bulk_in_limit_never_builds_a_full_size_packet() {
+        let sixteen = BusEvent::Frame {
+            timestamp_us: 0,
+            frame: frame(0x123, 7),
+        };
+        assert_eq!(postcard::to_allocvec(&sixteen).unwrap().len(), 16);
+
+        let mut full = Packer::new();
+        let mut queue: VecDeque<_> = core::iter::repeat_n(sixteen, 4).collect();
+        assert_eq!(
+            fill_all(&mut full, &mut queue.clone())[0].len(),
+            MAX_PACKET_SIZE
+        );
+
+        let packets = fill_all(&mut Packer::with_limit(BULK_IN_PACKET_LIMIT), &mut queue);
+        assert_eq!(packets.iter().map(Vec::len).collect::<Vec<_>>(), [48, 16]);
     }
 
     #[test]

@@ -26,6 +26,28 @@ pub const BULK_IN_EP: u8 = 0x82;
 /// Every packet holds a whole number of values; see [`Packer`](crate::Packer).
 pub const MAX_PACKET_SIZE: usize = 64;
 
+/// Largest bulk IN packet the interface sends: one byte short of
+/// [`MAX_PACKET_SIZE`], so that every IN packet is a short packet.
+///
+/// A USB bulk transfer ends with a packet shorter than the endpoint's
+/// maximum packet size, or when the host's buffer is full. If the interface
+/// sent a packet of exactly [`MAX_PACKET_SIZE`] bytes, a host reading into a
+/// larger buffer would wait for more data that may not come until the bus
+/// is busy again. Keeping every packet short means no zero-length packet is
+/// needed: each packet ends its transfer, and the host gets it at once.
+///
+/// The rule for the host follows from it. A bulk IN transfer returns
+/// exactly one packet, whatever the size of the buffer, so a buffer of
+/// [`MAX_PACKET_SIZE`] bytes is enough and a larger one gains nothing. To
+/// keep the endpoint busy, have several transfers of that size in flight
+/// instead. A packet of [`MAX_PACKET_SIZE`] bytes or more is not one the
+/// interface sends.
+///
+/// The firmware packs IN packets with
+/// `Packer::with_limit(BULK_IN_PACKET_LIMIT)`. The largest
+/// [`BusEvent`](crate::BusEvent) is 20 bytes, so three always fit.
+pub const BULK_IN_PACKET_LIMIT: usize = MAX_PACKET_SIZE - 1;
+
 /// Version of the protocol this crate describes, reported in
 /// [`DeviceInfo`](crate::DeviceInfo). Raise it with every change to the
 /// encoding of a value or to the meaning of a request, so that a host can
@@ -111,6 +133,7 @@ mod tests {
         assert_eq!(BULK_OUT_EP, 0x01);
         assert_eq!(BULK_IN_EP, 0x82);
         assert_eq!(MAX_PACKET_SIZE, 64);
+        assert_eq!(BULK_IN_PACKET_LIMIT, 63);
         assert_eq!(MSOS_VENDOR_CODE, 0x01);
     }
 
