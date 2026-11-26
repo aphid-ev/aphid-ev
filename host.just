@@ -10,5 +10,9 @@ check:
 test:
     cargo test --workspace
 
+# Remove the host workspace's target directory
+clean:
+    cargo clean
+
 # What CI runs for the host workspace
 ci: check test
