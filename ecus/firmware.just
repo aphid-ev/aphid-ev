@@ -19,5 +19,10 @@ check:
 flash:
     cargo run --release
 
+# Remove the firmware's target directory. Skipped while there is no firmware.
+[working-directory('firmware')]
+clean:
+    if [ -f Cargo.toml ]; then cargo clean; fi
+
 # What CI runs for the firmware
 ci-firmware: check build

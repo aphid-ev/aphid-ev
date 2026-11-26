@@ -69,6 +69,11 @@ _ci-echo:
 _seal elf:
     cargo run --quiet -p boot-image -- "{{ elf }}"
 
+# Remove the target directories of the bootloader and can-echo
+clean:
+    cargo clean
+    cd can-echo && cargo clean
+
 # The bootloader for every family, and can-echo
 ci-firmware: ci-bootloader ci-echo
 

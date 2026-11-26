@@ -26,6 +26,12 @@ check:
 flash mcu:
     cd firmware/{{ mcu }} && cargo run --release
 
+# Remove the target directories of both MCUs
+clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for mcu in {{ mcus }}; do (cd "firmware/$mcu" && cargo clean); done
+
 # What CI runs for the firmware
 ci-firmware: check build
 

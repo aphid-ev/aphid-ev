@@ -43,6 +43,9 @@ docs: artifacts site::build
 # Everything CI runs, across all components
 ci: host::ci can-usb::ci vcm::ci bms::ci bootloader::ci wiring::check site::check-stack docs
 
+# Remove the cargo target directory of every Rust workspace
+clean: host::clean can-usb::clean vcm::clean bms::clean bootloader::clean
+
 # Release notes since a component's last tag (vcm, vcm-hw, bms, bms-hw, can-usb, can-usb-hw, bootloader, manager)
 changelog component:
     #!/usr/bin/env bash
